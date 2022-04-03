@@ -178,7 +178,7 @@ int main(int, char**)
 	{
 	    // Poll and handle events (inputs, window resize, etc.)
 	    glfwPollEvents();
-	    // Create image on cuda and transfer to PBO then OpenGL texture
+	    // Create image on CUDA and transfer to PBO then OpenGL texture
 	    // CUDA-GL INTEROP STARTS HERE -------------------------------------------------------------------------
 	    map_cuda_resource(&cuda_resource);
 	    cuda_pointer_from_resource(&cuda_buffer, &cuda_pbo_storage_buffer_size, &cuda_resource);
@@ -187,7 +187,7 @@ int main(int, char**)
 	    // CUDA-GL INTEROP ENDS HERE ---------------------------------------------------------------------------
 	    bind_pbo(&pbo);
 	    bind_texture(&texture);
-	    upload_image_pbo_to_texture(); // needs no arguments because texture and pbo are bound
+	    upload_image_pbo_to_texture(); // Needs no arguments because texture and PBO are bound
 	    unbind_texture();
 	    unbind_pbo();
 
