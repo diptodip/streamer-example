@@ -5,8 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <chrono>
-#define GLEW_STATIC
-#include "glew.h"
+#include <GL/glew.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -127,7 +126,7 @@ int main(int, char**)
 	// GL 3.0 + GLSL 130
 	const char* glsl_version = "#version 130";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 #endif
 
 	// Create window with graphics context
