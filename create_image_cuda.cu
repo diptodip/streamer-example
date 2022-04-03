@@ -9,7 +9,6 @@ __global__ void create_image_cuda_kernel(unsigned char *cuda_buffer, double curr
 		*(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 1) = ((unsigned char) (((double) x / 854.0 * multiplier) * 255.0));
 		*(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 2) = ((unsigned char) (((double) y / 480.0 * multiplier) * 255.0));
 		*(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 3) = 255;
-		// printf("%d %d %d %d, ", *(cuda_buffer + ((y * 854 * 4) + (x * 4))), *(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 1), *(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 2), *(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 3));
 	}
 }
 
