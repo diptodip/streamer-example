@@ -1,7 +1,7 @@
 #!/bin/bash
 mkdir -p release;
 rm -f release/streamer_example;
-cp src/Roboto-Regular.ttf Roboto-Regular.ttf
+cp src/Roboto-Regular.ttf release/Roboto-Regular.ttf
 nvcc -c src/create_image_cuda.cu -arch=sm_80 -o release/create_image_cuda.o
 
 
