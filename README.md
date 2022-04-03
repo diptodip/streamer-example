@@ -15,5 +15,4 @@ Once you've built the program, you should be able to run `streamer_example.exe` 
 
 ![image](https://user-images.githubusercontent.com/14188457/161409656-3fc40477-97f4-4de3-b1ca-2b9fe672381b.png)
 
-You should see that the gradient pattern becomes mostly red then returns to having colors slowly over time.
-This pattern continues in a loop. The window that demonstrates flipping a coin is there only to show an example of tracking state independently of CUDA operations being called.
+You should see that the gradient pattern is animated. The coin flipping window is there only to show an example of tracking state independently of CUDA operations being called.
