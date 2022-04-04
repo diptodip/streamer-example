@@ -18,6 +18,14 @@
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 #include "shader_m.h"
 
+#include <cuda.h>
+#include "NvDecoder.h"
+#include "NvCodecUtils.h"
+#include "FFmpegDemuxer.h"
+#include "AppDecUtils.h"
+#include "ColorSpace.h"
+#include "Logger.h"
+
 // [Win32] The Dear ImGui example includes a copy of glfw3.lib
 // pre-compiled with VS2010 to maximize ease of testing and
 // compatibility with old VS compilers.  To link with VS2010-era
@@ -66,7 +74,7 @@ static void create_pbo(GLuint *pbo)
 {
 	glGenBuffers(1, pbo);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pbo);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, 854 * 480 * 4 * sizeof(unsigned char), 0, GL_STREAM_DRAW);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, 3208 * 2200 * 4 * sizeof(unsigned char), 0, GL_STREAM_DRAW);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
@@ -105,11 +113,25 @@ static void upload_image_pbo_to_texture()
 	// Assume PBO is bound before this, therefore the last
 	// argument is an offset into the PBO, not a pointer to a
 	// buffer stored in CPU memory
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 854, 480, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 }
+
+
+simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
+
 
 int main(int, char**)
 {
+
+	ck(cuInit(0));
+    char szInFilePath[256] = "/home/jinyao/Videos/2022-03-13_11:52:08/Cam5.mp4";
+    int iGpu = 0;
+    CUcontext cuContext = NULL;
+    createCudaContext(&cuContext, iGpu, CU_CTX_SCHED_BLOCKING_SYNC);
+    CheckInputFile(szInFilePath);
+    std::cout << szInFilePath << std::endl;
+
+
 	// Setup window
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
@@ -176,7 +198,7 @@ int main(int, char**)
     unsigned int textureColorbuffer;
     glGenTextures(1, &textureColorbuffer);
     glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 3208, 2200, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
@@ -219,95 +241,123 @@ int main(int, char**)
 	unbind_pbo();
 
 
+	// decoding 
+    FFmpegDemuxer demuxer(szInFilePath);
+    NvDecoder dec(cuContext, true, FFmpeg2NvCodecId(demuxer.GetVideoCodec()));
+    int nWidth = (demuxer.GetWidth() + 1) & ~1; // make sure it is even
+    int nPitch = nWidth * 4;
+    int nVideoBytes = 0, nFrameReturned = 0, iMatrix = 0;
+    uint8_t *pVideo = NULL;
+    uint8_t *pFrame;
+    int nFrame=0;
+
+
+
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
-	    // Poll and handle events (inputs, window resize, etc.)
-	    glfwPollEvents();
-		
 
-	    // Create image on CUDA and transfer to PBO then OpenGL texture
-	    // CUDA-GL INTEROP STARTS HERE -------------------------------------------------------------------------
-	    map_cuda_resource(&cuda_resource);
-	    cuda_pointer_from_resource(&cuda_buffer, &cuda_pbo_storage_buffer_size, &cuda_resource);
-	    create_image_cuda(cuda_buffer); // CUDA computation of an image!
-	    unmap_cuda_resource(&cuda_resource);
-	    // CUDA-GL INTEROP ENDS HERE ---------------------------------------------------------------------------
-	    bind_pbo(&pbo);
-	    bind_texture(&texture);
-	    upload_image_pbo_to_texture(); // Needs no arguments because texture and PBO are bound
-	    unbind_texture();
-	    unbind_pbo();
+        demuxer.Demux(&pVideo, &nVideoBytes);    
+        nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+        if (!nFrame && nFrameReturned)
+            LOG(INFO) << dec.GetVideoInfo();
 
-		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        // make sure we clear the framebuffer's content
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+		for (int i = 0; i < nFrameReturned; i++)
+		{
 
-		screenShader.use();
-		glBindVertexArray(quadVAO);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindVertexArray(0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			// Poll and handle events (inputs, window resize, etc.)
+			glfwPollEvents();
+
+            // create_image_cuda(cuda_buffer); // CUDA computation of an image!
+            pFrame = dec.GetFrame();
+            iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;			
+
+			// Create image on CUDA and transfer to PBO then OpenGL texture
+			// CUDA-GL INTEROP STARTS HERE -------------------------------------------------------------------------
+			map_cuda_resource(&cuda_resource);
+			cuda_pointer_from_resource(&cuda_buffer, &cuda_pbo_storage_buffer_size, &cuda_resource);
+            Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), cuda_buffer, nPitch, dec.GetWidth(), dec.GetHeight(), iMatrix);
+            unmap_cuda_resource(&cuda_resource);
+
+			// CUDA-GL INTEROP ENDS HERE ---------------------------------------------------------------------------
+			bind_pbo(&pbo);
+			bind_texture(&texture);
+			upload_image_pbo_to_texture(); // Needs no arguments because texture and PBO are bound
+			unbind_texture();
+			unbind_pbo();
+
+			glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+			// make sure we clear the framebuffer's content
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			screenShader.use();
+			glBindVertexArray(quadVAO);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glBindVertexArray(0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
-	    // Start the Dear ImGui frame
-	    ImGui_ImplOpenGL3_NewFrame();
-	    ImGui_ImplGlfw_NewFrame();
-	    ImGui::NewFrame();
+			// Start the Dear ImGui frame
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
 
-	    // Show a simple window that we create ourselves. This is
-	    // just to show that tracking of state is working
-	    // separately from CUDA.
-	    {
-		static float f = 0.0f;
-		static int counter = 0;
-		ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
-		ImGui::Begin("Hello, world!");
-		ImGui::Text("Flip a coin here!");
-		ImGui::SameLine();
-		if (ImGui::Button("Flip!")) {
-			result = ((double) rand() / (RAND_MAX));
-			if (result > 0.5) {
-				num_heads++;
-			} else {
-				num_tails++;
+			// Show a simple window that we create ourselves. This is
+			// just to show that tracking of state is working
+			// separately from CUDA.
+			{
+			static float f = 0.0f;
+			static int counter = 0;
+			ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
+			ImGui::Begin("Hello, world!");
+			ImGui::Text("Flip a coin here!");
+			ImGui::SameLine();
+			if (ImGui::Button("Flip!")) {
+				result = ((double) rand() / (RAND_MAX));
+				if (result > 0.5) {
+					num_heads++;
+				} else {
+					num_tails++;
+				}
 			}
-		}
-		if (result > 0.5) {
-			ImGui::Text("Heads!");
-		} else {
-			ImGui::Text("Tails!");
-		}
-		if ((num_heads + num_tails) > 0) {
-			ImGui::Text("Proportion heads: %.3f", (float) num_heads / (num_heads + num_tails));
-		}
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::End();
-	    }
+			if (result > 0.5) {
+				ImGui::Text("Heads!");
+			} else {
+				ImGui::Text("Tails!");
+			}
+			if ((num_heads + num_tails) > 0) {
+				ImGui::Text("Proportion heads: %.3f", (float) num_heads / (num_heads + num_tails));
+			}
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::End();
+			}
 
-	    // Render a video frame
-	    {
-		ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
-		ImGui::Begin("Hello, video!");
-		ImGui::Text("pointer = %p", textureColorbuffer);
-		ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(854, 480));
-		ImGui::End();
-	    }
+			// Render a video frame
+			{
+			ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
+			ImGui::Begin("Hello, video!");
+			ImGui::Text("pointer = %p", textureColorbuffer);
+			ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(3208, 2200));
+			ImGui::End();
+			}
 
-	    // Rendering
-	    ImGui::Render();
-	    int display_w, display_h;
-	    glfwGetFramebufferSize(window, &display_w, &display_h);
-	    glViewport(0, 0, display_w, display_h);
-	    glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-	    glClear(GL_COLOR_BUFFER_BIT);
-	    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			// Rendering
+			ImGui::Render();
+			int display_w, display_h;
+			glfwGetFramebufferSize(window, &display_w, &display_h);
+			glViewport(0, 0, display_w, display_h);
+			glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+			glClear(GL_COLOR_BUFFER_BIT);
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-	    glfwSwapBuffers(window);
+			glfwSwapBuffers(window);
+		}
+        nFrame += nFrameReturned;
 	}
+
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
