@@ -2,7 +2,11 @@
 mkdir -p release;
 rm -f release/streamer_example;
 cp src/Roboto-Regular.ttf release/Roboto-Regular.ttf
+cp src/shader_picture.fs release/shader_picture.fs
+cp src/shader_picture.vs release/shader_picture.vs
+
 nvcc -c src/create_image_cuda.cu -arch=sm_80 -o release/create_image_cuda.o
+nvcc -c src/ColorSpace.cu -arch=sm_80 -o release/ColorSpace.o
 
 
 DIR_IMGUI="lib/imgui"
@@ -16,12 +20,15 @@ g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o 
 
 
 g++ -Ofast -ffast-math -std=c++11 \
-    release/create_image_cuda.o \
+    release/ColorSpace.o \
     -o release/*.o \
+    -Ilib/nvcodec \
     -o release/streamer_example -I ./src/ src/*.cpp \
     -I/usr/local/cuda-11.4/include \
     -I$DIR_IMGUI \
     -L/usr/local/cuda-11.4/lib64/ -lcudart -lcuda -lnppicc -lnvcuvid \
     -lGLEW -lGLU -lGL \
-    `pkg-config --static --libs glfw3` 
+    `pkg-config --static --libs glfw3` \
+    `pkg-config --cflags libavformat libswscale libswresample libavutil libavcodec` \
+    `pkg-config --libs libavformat libswscale libswresample libavutil libavcodec`
     
