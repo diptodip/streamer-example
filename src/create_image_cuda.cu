@@ -3,7 +3,7 @@
 __global__ void create_image_cuda_kernel(unsigned char *cuda_buffer, double current_time) {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
-	double multiplier = 0.5 * (sin(current_time * 0.0000001) + 1.0);
+	double multiplier = 0.5 * (sin(current_time * 0.000000001) + 1.0);
 	if ((x < 854) && (y < 480)) {
 		*(cuda_buffer + ((y * 854 * 4) + (x * 4))) = 200 + ((unsigned char) (((double) y / 854.0 * multiplier) * 55.0));
 		*(cuda_buffer + ((y * 854 * 4) + (x * 4)) + 1) = ((unsigned char) (((double) x / 854.0 * multiplier) * 255.0));

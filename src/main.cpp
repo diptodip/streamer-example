@@ -16,6 +16,7 @@
 #include <GLES2/gl2.h>
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#include "shader_m.h"
 
 // [Win32] The Dear ImGui example includes a copy of glfw3.lib
 // pre-compiled with VS2010 to maximize ease of testing and
@@ -139,6 +140,52 @@ int main(int, char**)
 	// Initialize OpenGL functions with GLEW
 	glew_error_callback(glewInit());
 
+
+    Shader screenShader("shader_picture.vs", "shader_picture.fs");
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+	unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    screenShader.use();
+    screenShader.setInt("screenTexture", 0);
+
+    // framebuffer configuration
+    // -------------------------
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a color attachment texture
+    unsigned int textureColorbuffer;
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 1280, 720, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -177,6 +224,8 @@ int main(int, char**)
 	{
 	    // Poll and handle events (inputs, window resize, etc.)
 	    glfwPollEvents();
+		
+
 	    // Create image on CUDA and transfer to PBO then OpenGL texture
 	    // CUDA-GL INTEROP STARTS HERE -------------------------------------------------------------------------
 	    map_cuda_resource(&cuda_resource);
@@ -189,6 +238,20 @@ int main(int, char**)
 	    upload_image_pbo_to_texture(); // Needs no arguments because texture and PBO are bound
 	    unbind_texture();
 	    unbind_pbo();
+
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        // make sure we clear the framebuffer's content
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+		screenShader.use();
+		glBindVertexArray(quadVAO);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindVertexArray(0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 
 	    // Start the Dear ImGui frame
 	    ImGui_ImplOpenGL3_NewFrame();
@@ -229,8 +292,8 @@ int main(int, char**)
 	    {
 		ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
 		ImGui::Begin("Hello, video!");
-		ImGui::Text("pointer = %p", texture);
-		ImGui::Image((void*)(intptr_t)texture, ImVec2(854, 480));
+		ImGui::Text("pointer = %p", textureColorbuffer);
+		ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(854, 480));
 		ImGui::End();
 	    }
 
