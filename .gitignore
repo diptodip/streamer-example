@@ -2,3 +2,5 @@
 *.o
 release
 .vscode
+.vs
+x64

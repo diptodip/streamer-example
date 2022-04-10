@@ -124,8 +124,10 @@ int main(int, char**)
 {
 
 	ck(cuInit(0));
-    char szInFilePath[256] = "/home/jinyao/Videos/2022-03-13_11:52:08/Cam5.mp4";
-    int iGpu = 0;
+    // char szInFilePath[256] = "/home/jinyao/Videos/2022-03-13_11:52:08/Cam5.mp4";
+	char szInFilePath[256] = "C:/Users/yaoyao/Videos/2022-03-13_12_13_07/Cam5.mp4";
+
+	int iGpu = 0;
     CUcontext cuContext = NULL;
     createCudaContext(&cuContext, iGpu, CU_CTX_SCHED_BLOCKING_SYNC);
     CheckInputFile(szInFilePath);
