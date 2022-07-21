@@ -15,8 +15,8 @@ g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o 
 g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_draw.o $DIR_IMGUI/imgui_draw.cpp
 g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_tables.o $DIR_IMGUI/imgui_tables.cpp
 g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_widgets.o $DIR_IMGUI/imgui_widgets.cpp
-g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_impl_glfw.o $DIR_IMGUI/imgui_impl_glfw.cpp
-g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_impl_opengl3.o $DIR_IMGUI/imgui_impl_opengl3.cpp
+g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_impl_glfw.o $DIR_IMGUI/backends/imgui_impl_glfw.cpp
+g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_impl_opengl3.o $DIR_IMGUI/backends/imgui_impl_opengl3.cpp
 
 
 g++ -Ofast -ffast-math -std=c++11 \
@@ -26,6 +26,7 @@ g++ -Ofast -ffast-math -std=c++11 \
     -o release/streamer_example -I ./src/ src/*.cpp \
     -I/usr/local/cuda-11.4/include \
     -I$DIR_IMGUI \
+    -I$DIR_IMGUI/backends \
     -L/usr/local/cuda-11.4/lib64/ -lcudart -lcuda -lnppicc -lnvcuvid \
     -lGLEW -lGLU -lGL \
     `pkg-config --static --libs glfw3` \

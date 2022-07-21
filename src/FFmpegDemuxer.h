@@ -10,11 +10,21 @@
 */
 #pragma once
 
+#ifdef _WIN32
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavformat/avio.h>
 #include <libavcodec/avcodec.h>
 }
+#else
+extern "C" {
+#include "libavcodec/avcodec.h"
+#include "libavcodec/bsf.h"
+#include "libavformat/avformat.h"
+#include "libavformat/avio.h"
+}
+#endif
+
 #include "NvCodecUtils.h"
 
 //---------------------------------------------------------------------------

@@ -64,7 +64,12 @@
 #endif
 
 // GLFW
+#ifdef _WIN32 
 #include <glfw3.h>
+#else
+#include <GLFW/glfw3.h>
+#endif
+
 #ifdef _WIN32
 #undef APIENTRY
 #define GLFW_EXPOSE_NATIVE_WIN32

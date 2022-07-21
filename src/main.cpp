@@ -124,8 +124,8 @@ int main(int, char**)
 {
 
 	ck(cuInit(0));
-    // char szInFilePath[256] = "/home/jinyao/Videos/2022-03-13_11:52:08/Cam5.mp4";
-	char szInFilePath[256] = "C:/Users/yaoyao/Videos/2022-03-13_12_13_07/Cam5.mp4";
+    char szInFilePath[256] = "/home/jinyao/Videos/2022-07-08_17:37:58/Cam5.mp4";
+	// char szInFilePath[256] = "C:/Users/yaoyao/Videos/2022-03-13_12_13_07/Cam5.mp4";
 
 	int iGpu = 0;
     CUcontext cuContext = NULL;
@@ -165,49 +165,50 @@ int main(int, char**)
 	glew_error_callback(glewInit());
 
 
-    Shader screenShader("shader_picture.vs", "shader_picture.fs");
-    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-        // positions   // texCoords
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
+    // Shader screenShader("shader_picture.vs", "shader_picture.fs");
+    // float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+    //     // positions   // texCoords
+    //     -1.0f,  1.0f,  0.0f, 1.0f,
+    //     -1.0f, -1.0f,  0.0f, 0.0f,
+    //      1.0f, -1.0f,  1.0f, 0.0f,
 
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
-    };
+    //     -1.0f,  1.0f,  0.0f, 1.0f,
+    //      1.0f, -1.0f,  1.0f, 0.0f,
+    //      1.0f,  1.0f,  1.0f, 1.0f
+    // };
 
-	unsigned int quadVAO, quadVBO;
-    glGenVertexArrays(1, &quadVAO);
-    glGenBuffers(1, &quadVBO);
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	// unsigned int quadVAO, quadVBO;
+    // glGenVertexArrays(1, &quadVAO);
+    // glGenBuffers(1, &quadVBO);
+    // glBindVertexArray(quadVAO);
+    // glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    // glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    // glEnableVertexAttribArray(0);
+    // glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    // glEnableVertexAttribArray(1);
+    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-    screenShader.use();
-    screenShader.setInt("screenTexture", 0);
+    // screenShader.use();
+    // screenShader.setInt("screenTexture", 0);
 
-    // framebuffer configuration
-    // -------------------------
-    unsigned int framebuffer;
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    // create a color attachment texture
-    unsigned int textureColorbuffer;
-    glGenTextures(1, &textureColorbuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 3208, 2200, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    // // framebuffer configuration
+    // // -------------------------
+    // unsigned int framebuffer;
+    // glGenFramebuffers(1, &framebuffer);
+    // glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // // create a color attachment texture
+    // unsigned int textureColorbuffer;
+    // glGenTextures(1, &textureColorbuffer);
+    // glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 3208, 2200, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    //     std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 
 
 	// Setup Dear ImGui context
@@ -253,6 +254,9 @@ int main(int, char**)
     uint8_t *pFrame;
     int nFrame=0;
 
+    unsigned char *display_buffer;
+	int size_pic = 10586400 *  sizeof(unsigned char);
+    cudaMalloc((void **)&display_buffer, size_pic);
 
 
 	// Main loop
@@ -273,12 +277,14 @@ int main(int, char**)
             // create_image_cuda(cuda_buffer); // CUDA computation of an image!
             pFrame = dec.GetFrame();
             iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;			
+            cudaMemcpy(display_buffer, pFrame, size_pic, cudaMemcpyDeviceToDevice);
 
 			// Create image on CUDA and transfer to PBO then OpenGL texture
 			// CUDA-GL INTEROP STARTS HERE -------------------------------------------------------------------------
 			map_cuda_resource(&cuda_resource);
 			cuda_pointer_from_resource(&cuda_buffer, &cuda_pbo_storage_buffer_size, &cuda_resource);
-            Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), cuda_buffer, nPitch, dec.GetWidth(), dec.GetHeight(), iMatrix);
+			// copy to display buffer first 
+            Nv12ToColor32<RGBA32>(display_buffer, dec.GetWidth(), cuda_buffer, nPitch, dec.GetWidth(), dec.GetHeight(), iMatrix);
             unmap_cuda_resource(&cuda_resource);
 
 			// CUDA-GL INTEROP ENDS HERE ---------------------------------------------------------------------------
@@ -288,18 +294,18 @@ int main(int, char**)
 			unbind_texture();
 			unbind_pbo();
 
-			glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-			// make sure we clear the framebuffer's content
-			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			// glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+			// // make sure we clear the framebuffer's content
+			// glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			// glClear(GL_COLOR_BUFFER_BIT);
 
-			screenShader.use();
-			glBindVertexArray(quadVAO);
-			glBindTexture(GL_TEXTURE_2D, texture);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-			glBindTexture(GL_TEXTURE_2D, 0);
-			glBindVertexArray(0);
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			// screenShader.use();
+			// glBindVertexArray(quadVAO);
+			// glBindTexture(GL_TEXTURE_2D, texture);
+			// glDrawArrays(GL_TRIANGLES, 0, 6);
+			// glBindTexture(GL_TEXTURE_2D, 0);
+			// glBindVertexArray(0);
+			// glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
 			// Start the Dear ImGui frame
@@ -341,8 +347,10 @@ int main(int, char**)
 			{
 			ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
 			ImGui::Begin("Hello, video!");
-			ImGui::Text("pointer = %p", textureColorbuffer);
-			ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(3208, 2200));
+			// ImGui::Text("pointer = %p", textureColorbuffer);
+			// ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(3208, 2200));
+			ImGui::Text("pointer = %p", texture);
+			ImGui::Image((void*)(intptr_t)texture, ImVec2(3208, 2200));
 			ImGui::End();
 			}
 
