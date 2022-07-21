@@ -122,6 +122,7 @@ simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger(
 
 int main(int, char**)
 {
+	// next test to move decoding into another thread by myself 
 
 	ck(cuInit(0));
     char szInFilePath[256] = "/home/jinyao/Videos/2022-07-08_17:37:58/Cam5.mp4";
