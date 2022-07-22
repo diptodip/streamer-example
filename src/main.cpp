@@ -25,6 +25,8 @@
 #include "AppDecUtils.h"
 #include "ColorSpace.h"
 #include "Logger.h"
+#include "gl_helper.h"
+#include "decoder.h"
 
 // [Win32] The Dear ImGui example includes a copy of glfw3.lib
 // pre-compiled with VS2010 to maximize ease of testing and
@@ -37,84 +39,6 @@
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
-
-static void glfw_error_callback(int error, const char* description)
-{
-    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
-}
-
-static void glew_error_callback(GLenum glew_error)
-{
-	if (GLEW_OK != glew_error) {
-		printf("GLEW error: %s\n", glewGetErrorString(glew_error));
-	}
-}
-
-static void create_texture(GLuint *texture) {
-        // Create a OpenGL texture identifier
-	glGenTextures(1, texture);
-	glBindTexture(GL_TEXTURE_2D, *texture);
-
-	// Setup filtering parameters for display
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-}
-
-static void bind_texture(GLuint *texture)
-{
-	glBindTexture(GL_TEXTURE_2D, *texture);
-}
-
-static void unbind_texture()
-{
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-static void create_pbo(GLuint *pbo)
-{
-	glGenBuffers(1, pbo);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pbo);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, 3208 * 2200 * 4 * sizeof(unsigned char), 0, GL_STREAM_DRAW);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-}
-
-static void bind_pbo(GLuint *pbo)
-{
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pbo);
-}
-
-static void unbind_pbo()
-{
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-}
-
-static void register_pbo_to_cuda(GLuint *pbo, cudaGraphicsResource_t *cuda_resource)
-{
-	cudaGraphicsGLRegisterBuffer(cuda_resource, *pbo, cudaGraphicsRegisterFlagsNone);
-}
-
-static void map_cuda_resource(cudaGraphicsResource_t *cuda_resource)
-{
-	cudaGraphicsMapResources(1, cuda_resource);
-}
-
-static void cuda_pointer_from_resource(unsigned char **cuda_buffer_p, size_t *size_p, cudaGraphicsResource_t *cuda_resource)
-{
-	cudaGraphicsResourceGetMappedPointer((void **) cuda_buffer_p, size_p, *cuda_resource);
-}
-
-static void unmap_cuda_resource(cudaGraphicsResource_t *cuda_resource)
-{
-	cudaGraphicsUnmapResources(1, cuda_resource);
-}
-
-static void upload_image_pbo_to_texture()
-{
-	// Assume PBO is bound before this, therefore the last
-	// argument is an offset into the PBO, not a pointer to a
-	// buffer stored in CPU memory
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-}
 
 
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
@@ -165,49 +89,49 @@ int main(int, char**)
 	glew_error_callback(glewInit());
 
 
-    // Shader screenShader("shader_picture.vs", "shader_picture.fs");
-    // float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-    //     // positions   // texCoords
-    //     -1.0f,  1.0f,  0.0f, 1.0f,
-    //     -1.0f, -1.0f,  0.0f, 0.0f,
-    //      1.0f, -1.0f,  1.0f, 0.0f,
+    Shader screenShader("shader_picture.vs", "shader_picture.fs");
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
 
-    //     -1.0f,  1.0f,  0.0f, 1.0f,
-    //      1.0f, -1.0f,  1.0f, 0.0f,
-    //      1.0f,  1.0f,  1.0f, 1.0f
-    // };
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
 
-	// unsigned int quadVAO, quadVBO;
-    // glGenVertexArrays(1, &quadVAO);
-    // glGenBuffers(1, &quadVBO);
-    // glBindVertexArray(quadVAO);
-    // glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-    // glEnableVertexAttribArray(0);
-    // glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    // glEnableVertexAttribArray(1);
-    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-    // screenShader.use();
-    // screenShader.setInt("screenTexture", 0);
+    screenShader.use();
+    screenShader.setInt("screenTexture", 0);
 
-    // // framebuffer configuration
-    // // -------------------------
-    // unsigned int framebuffer;
-    // glGenFramebuffers(1, &framebuffer);
-    // glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    // // create a color attachment texture
-    // unsigned int textureColorbuffer;
-    // glGenTextures(1, &textureColorbuffer);
-    // glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 3208, 2200, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    // framebuffer configuration
+    // -------------------------
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a color attachment texture
+    unsigned int textureColorbuffer;
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 3208, 2200, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
 
-    // if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    //     std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
 
@@ -245,15 +169,6 @@ int main(int, char**)
 
 
 	// decoding 
-    FFmpegDemuxer demuxer(szInFilePath);
-    NvDecoder dec(cuContext, true, FFmpeg2NvCodecId(demuxer.GetVideoCodec()));
-    int nWidth = (demuxer.GetWidth() + 1) & ~1; // make sure it is even
-    int nPitch = nWidth * 4;
-    int nVideoBytes = 0, nFrameReturned = 0, iMatrix = 0;
-    uint8_t *pVideo = NULL;
-    uint8_t *pFrame;
-    int nFrame=0;
-
     unsigned char *display_buffer;
 	int size_pic = 10586400 *  sizeof(unsigned char);
     cudaMalloc((void **)&display_buffer, size_pic);
@@ -263,21 +178,8 @@ int main(int, char**)
 	while (!glfwWindowShouldClose(window))
 	{
 
-        demuxer.Demux(&pVideo, &nVideoBytes);    
-        nFrameReturned = dec.Decode(pVideo, nVideoBytes);
-        if (!nFrame && nFrameReturned)
-            LOG(INFO) << dec.GetVideoInfo();
-
-		for (int i = 0; i < nFrameReturned; i++)
-		{
-
 			// Poll and handle events (inputs, window resize, etc.)
 			glfwPollEvents();
-
-            // create_image_cuda(cuda_buffer); // CUDA computation of an image!
-            pFrame = dec.GetFrame();
-            iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;			
-            cudaMemcpy(display_buffer, pFrame, size_pic, cudaMemcpyDeviceToDevice);
 
 			// Create image on CUDA and transfer to PBO then OpenGL texture
 			// CUDA-GL INTEROP STARTS HERE -------------------------------------------------------------------------
@@ -294,18 +196,18 @@ int main(int, char**)
 			unbind_texture();
 			unbind_pbo();
 
-			// glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-			// // make sure we clear the framebuffer's content
-			// glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-			// glClear(GL_COLOR_BUFFER_BIT);
+			glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+			// make sure we clear the framebuffer's content
+			glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
-			// screenShader.use();
-			// glBindVertexArray(quadVAO);
-			// glBindTexture(GL_TEXTURE_2D, texture);
-			// glDrawArrays(GL_TRIANGLES, 0, 6);
-			// glBindTexture(GL_TEXTURE_2D, 0);
-			// glBindVertexArray(0);
-			// glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			screenShader.use();
+			glBindVertexArray(quadVAO);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glBindVertexArray(0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
 			// Start the Dear ImGui frame
@@ -347,10 +249,10 @@ int main(int, char**)
 			{
 			ImGui::SetNextWindowSize(ImVec2(0, 0), 0); // Setting size to 0, 0 forces auto-fit
 			ImGui::Begin("Hello, video!");
-			// ImGui::Text("pointer = %p", textureColorbuffer);
-			// ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(3208, 2200));
-			ImGui::Text("pointer = %p", texture);
-			ImGui::Image((void*)(intptr_t)texture, ImVec2(3208, 2200));
+			ImGui::Text("pointer = %p", textureColorbuffer);
+			ImGui::Image((void*)(intptr_t)textureColorbuffer, ImVec2(3208, 2200));
+			// ImGui::Text("pointer = %p", texture);
+			// ImGui::Image((void*)(intptr_t)texture, ImVec2(3208, 2200));
 			ImGui::End();
 			}
 
