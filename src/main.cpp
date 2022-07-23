@@ -198,7 +198,7 @@ int main(int, char**)
 	// start thread 
     std::vector<std::thread> decoder_threads;
 	bool* decoding_flag = new bool(true);
-    decoder_threads.push_back(std::thread(&decoder_process, szInFilePath, 0, current_frame_on_host, decoding_flag));
+    decoder_threads.push_back(std::thread(&decoder_process, szInFilePath, 1, current_frame_on_host, decoding_flag));
 
 	int frame_i = 0;
 
