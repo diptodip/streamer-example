@@ -58,19 +58,19 @@ void decoder_process(const char *szInFilePath, int gpu_id, unsigned char* pImage
             iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;
          
             Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), (uint8_t*)pTmpImage, 4 * dec.GetWidth(), dec.GetWidth(), dec.GetHeight(), iMatrix);
-            GetImage(pTmpImage, pImage, 8 * dec.GetWidth(), dec.GetHeight());
+            GetImage(pTmpImage, pImage, 4 * dec.GetWidth(), dec.GetHeight());
 
-            int counter = 0;
-            for (int i = 0; i < 2200; i++) {
-                for (int j = 0; j < 3208; j++) {
-                    for (int k = 0; k < 4; k++) {
-                        printf("%x ", pImage[counter]);
-                        counter++;
-                    }
-                    printf("  ");
-                }
-                printf("\n");
-            }
+            // int counter = 0;
+            // for (int i = 0; i < 2200; i++) {
+            //     for (int j = 0; j < 3208; j++) {
+            //         for (int k = 0; k < 4; k++) {
+            //             printf("%x ", pImage[counter]);
+            //             counter++;
+            //         }
+            //         printf("  ");
+            //     }
+            //     printf("\n");
+            // }
 
 
             // std::string image_frame_name = std::to_string(frame_i) + ".jpg";
