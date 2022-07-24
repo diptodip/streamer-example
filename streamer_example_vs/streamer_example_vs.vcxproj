@@ -134,8 +134,8 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;$(SolutionDir)\lib;$(SolutionDir)\lib\nvcodec;$(SolutionDir)\lib\glm;$(SolutionDir)\lib\imgui;$(SolutionDir)\lib\FFmpeg\include;$(SolutionDir)\lib\GLFW;$(SolutionDir)\lib\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;$(SolutionDir)\lib;$(SolutionDir)\lib\nvcodec;$(SolutionDir)\lib\glm;$(SolutionDir)\lib\imgui;$(SolutionDir)\lib\FFmpeg\include;$(SolutionDir)\lib\GLFW;$(SolutionDir)\lib\IconFontCppHeaders;$(SolutionDir)\lib\imgui\backends;$(SolutionDir)\lib\imgui-filebrowser;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -146,6 +146,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome5.h" />
+    <ClInclude Include="..\lib\imgui-filebrowser\imfilebrowser.h" />
     <ClInclude Include="..\lib\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="..\lib\imgui\backends\imgui_impl_opengl3.h" />
     <ClInclude Include="..\lib\imgui\imconfig.h" />
@@ -157,6 +159,7 @@
     <ClInclude Include="..\src\AppDecUtils.h" />
     <ClInclude Include="..\src\ColorSpace.h" />
     <ClInclude Include="..\src\create_image_cuda.h" />
+    <ClInclude Include="..\src\decoder.h" />
     <ClInclude Include="..\src\FFmpegDemuxer.h" />
     <ClInclude Include="..\src\Logger.h" />
     <ClInclude Include="..\src\NvCodecUtils.h" />
@@ -181,6 +184,7 @@
     <ClCompile Include="..\lib\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\lib\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\lib\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\src\decoder.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\NvDecoder.cpp" />
   </ItemGroup>

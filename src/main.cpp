@@ -32,6 +32,7 @@
 
 #include <iostream>       // std::cout
 #include <thread>         // std::thread
+#include <imfilebrowser.h>
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
@@ -43,16 +44,6 @@ simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger(
 
 int main(int, char**)
 {
-
-    ck(cuInit(0));
-    char szInFilePath[256] = "/home/jinyao/Videos/2022-07-08_17:37:58/Cam5.mp4";
-    // char szInFilePath[256] = "C:/Users/yaoyao/Videos/2022-03-13_12_13_07/Cam5.mp4";
-
-    int iGpu = 0;
-    CUcontext cuContext = NULL;
-    createCudaContext(&cuContext, iGpu, CU_CTX_SCHED_BLOCKING_SYNC);
-    CheckInputFile(szInFilePath);
-    std::cout << szInFilePath << std::endl;
 
 
     // Setup window
@@ -138,21 +129,27 @@ int main(int, char**)
 
     // Our state
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);
+
+
+
+    ImGui::FileBrowser file_dialog;
+    file_dialog.SetTitle("title");
+    file_dialog.SetTypeFilters({ ".mp4" });
+
+    
     double result = 0.0;
     unsigned long long num_heads = 0;
     unsigned long long num_tails = 0;
     
     
-
     int size_pic = 3208 * 2200 * 4 *  sizeof(unsigned char);
     unsigned char* current_frame_on_host;
     current_frame_on_host = (unsigned char*)malloc(size_pic); 
 
-    // start thread 
+    std::string input_file;
     std::vector<std::thread> decoder_threads;
     bool* decoding_flag = new bool(true);
-    decoder_threads.push_back(std::thread(&decoder_process, szInFilePath, 1, current_frame_on_host, decoding_flag));
-
+    int gpu_index = 0;
     int frame_i = 0;
 
     // Main loop
@@ -171,6 +168,24 @@ int main(int, char**)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+
+        if (ImGui::Begin("dummy window"))
+        {
+            // open file dialog when user clicks this button
+            if (ImGui::Button("open file dialog"))
+                file_dialog.Open();
+        }
+        ImGui::End();
+        
+        file_dialog.Display();
+
+        if (file_dialog.HasSelected())
+        {
+            input_file = file_dialog.GetSelected().string();
+            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, current_frame_on_host, decoding_flag));
+            file_dialog.ClearSelected();
+        }
 
         // Show a simple window that we create ourselves. This is
         // just to show that tracking of state is working

@@ -55,6 +55,15 @@
     <ClInclude Include="..\lib\imgui\backends\imgui_impl_opengl3.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome5.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\decoder.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\imgui-filebrowser\imfilebrowser.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\create_image_cuda.cu">
@@ -93,6 +102,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\decoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
