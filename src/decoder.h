@@ -7,4 +7,10 @@
 #include "AppDecUtils.h"
 #include "ColorSpace.h"
 
-void decoder_process(const char *szInFilePath, int gpu_id, unsigned char* display_buffer, bool* decoding_flag);
+struct PictureBuffer{
+	unsigned char* frame;
+	int frame_number;
+	bool available_to_write;
+};
+
+void decoder_process(const char* input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer);

@@ -45,7 +45,6 @@ simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger(
 int main(int, char**)
 {
 
-
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -116,7 +115,7 @@ int main(int, char**)
 
     // Create a OpenGL texture identifier
     GLuint image_texture;
-     glGenTextures(1, &image_texture);
+    glGenTextures(1, &image_texture);
     glBindTexture(GL_TEXTURE_2D, image_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     // Setup filtering parameters for display
@@ -126,10 +125,8 @@ int main(int, char**)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
 
 
-
     // Our state
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);
-
 
 
     ImGui::FileBrowser file_dialog;
@@ -143,14 +140,22 @@ int main(int, char**)
     
     
     int size_pic = 3208 * 2200 * 4 *  sizeof(unsigned char);
-    unsigned char* current_frame_on_host;
-    current_frame_on_host = (unsigned char*)malloc(size_pic); 
+
+    // allocate display buffer
+    const int size_of_buffer = 8;
+    PictureBuffer display_buffer[size_of_buffer];
+    for (int i = 0; i < size_of_buffer; i++) {
+        display_buffer[i].frame = (unsigned char*)malloc(size_pic);
+        display_buffer[i].frame_number = 0;
+        display_buffer[i].available_to_write = true;
+    }
 
     std::string input_file;
     std::vector<std::thread> decoder_threads;
-    bool* decoding_flag = new bool(true);
+    bool* decoding_flag = new bool(false);
     int gpu_index = 0;
-    int frame_i = 0;
+    int to_display_frame_number = 0;
+    int read_head = 0;
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -158,10 +163,6 @@ int main(int, char**)
 
         // Poll and handle events (inputs, window resize, etc.)
         glfwPollEvents();
-
-        bind_texture(&image_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, current_frame_on_host);
-        unbind_texture();
 
 
         // Start the Dear ImGui frame
@@ -183,7 +184,7 @@ int main(int, char**)
         if (file_dialog.HasSelected())
         {
             input_file = file_dialog.GetSelected().string();
-            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, current_frame_on_host, decoding_flag));
+            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer));
             file_dialog.ClearSelected();
         }
 
@@ -216,6 +217,23 @@ int main(int, char**)
             ImGui::End();
         }
 
+        
+
+        if (*decoding_flag) {
+            // if the current frame is ready, upload for display, otherwise wait for the frame to get ready 
+            while (display_buffer[read_head].frame_number != to_display_frame_number) {
+                //std::cout << display_buffer[read_head].frame_number << ", " << to_display_frame_number << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+
+        // upload image to opengl 
+        bind_texture(&image_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
+        unbind_texture();
+            
+        
+
         // Render a video frame
         {
             ImGui::Begin("Hello, video!");
@@ -247,7 +265,12 @@ int main(int, char**)
         }
 
         glfwSwapBuffers(window);
-        frame_i++;
+        
+        if(*decoding_flag){
+            to_display_frame_number++;
+            display_buffer[read_head].available_to_write = true;
+            read_head = (read_head + 1) % size_of_buffer;
+        }
     }
 
 
