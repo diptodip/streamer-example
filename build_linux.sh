@@ -18,7 +18,7 @@ g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o 
 g++ -std=c++11 -I$DIR_IMGUI -g -Wall -Wformat `pkg-config --cflags glfw3` -c -o release/imgui_impl_opengl3.o $DIR_IMGUI/backends/imgui_impl_opengl3.cpp
 
 
-g++ -Ofast -ffast-math -std=c++11 \
+g++ -Ofast -ffast-math -std=c++17 \
     release/ColorSpace.o \
     -o release/*.o \
     -Ilib/nvcodec \
@@ -27,6 +27,7 @@ g++ -Ofast -ffast-math -std=c++11 \
     -I$DIR_IMGUI \
     -I$DIR_IMGUI/backends \
     -Ilib/IconFontCppHeaders \
+    -Ilib/imgui-filebrowser \
     -L/usr/local/cuda-11.4/lib64/ -lcudart -lcuda -lnppicc -lnvcuvid \
     -lGLEW -lGLU -lGL \
     `pkg-config --static --libs glfw3` \
