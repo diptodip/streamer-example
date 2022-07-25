@@ -171,7 +171,7 @@ int main(int, char**)
         ImGui::NewFrame();
 
 
-        if (ImGui::Begin("dummy window"))
+        if (ImGui::Begin("File Browser"))
         {
             // open file dialog when user clicks this button
             if (ImGui::Button("open file dialog"))
@@ -214,6 +214,7 @@ int main(int, char**)
                 ImGui::Text("Proportion heads: %.3f", (float) num_heads / (num_heads + num_tails));
             }
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::Text("Frame number %d ", to_display_frame_number);
             ImGui::End();
         }
 
