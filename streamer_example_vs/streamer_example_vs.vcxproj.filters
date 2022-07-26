@@ -64,6 +64,15 @@
     <ClInclude Include="..\lib\imgui-filebrowser\imfilebrowser.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome6.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome4.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsForkAwesome.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\create_image_cuda.cu">
@@ -73,6 +82,9 @@
       <Filter>Source Files</Filter>
     </None>
     <None Include="..\src\shader_picture.vs">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\lib\IconFontCppHeaders\IconsFontAwesome5.cs">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

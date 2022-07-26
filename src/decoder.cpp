@@ -19,7 +19,7 @@ void GetImage(CUdeviceptr dpSrc, uint8_t *pDst, int nWidth, int nHeight)
 }
 
 
-void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer)
+void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag)
 {
     CheckInputFile(input_file_name);
     std::cout << input_file_name << std::endl;
@@ -67,7 +67,7 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
                 display_buffer[buffer_head].frame_number = nFrame;
             }
             else {
-                while (!display_buffer[buffer_head].available_to_write) {
+                while (!display_buffer[buffer_head].available_to_write && !(*stop_flag)) {
                     // if the next frame hasn't been displayed, the queue is full, sleep  
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
@@ -80,5 +80,5 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
             nFrame = nFrame + 1;
             buffer_head = (buffer_head + 1) % size_of_buffer;
         }	            
-    } while (true);
+    } while (!(*stop_flag));
 }

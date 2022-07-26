@@ -27,7 +27,7 @@
 #include "Logger.h"
 #include "gl_helper.h"
 #include "decoder.h"
-#include "IconsFontAwesome5.h"
+#include "IconsForkAwesome.h"
 
 
 #include <iostream>       // std::cout
@@ -40,6 +40,7 @@
 
 
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
+
 
 
 int main(int, char**)
@@ -105,11 +106,11 @@ int main(int, char**)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Load a nice font
-    io.Fonts->AddFontFromFileTTF("Roboto-Regular.ttf", 15.0f);
+    io.Fonts->AddFontFromFileTTF("../fonts/Roboto-Regular.ttf", 15.0f);
     // merge in icons from Font Awesome
-    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    static const ImWchar icons_ranges[] = { ICON_MIN_FK, ICON_MAX_16_FK, 0 };
     ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-    io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_FAS, 15.0f, &icons_config, icons_ranges);
+    io.Fonts->AddFontFromFileTTF("../fonts/forkawesome-webfont.ttf", 15.0f, &icons_config, icons_ranges);
     // use FONT_ICON_FILE_NAME_FAR if you want regular instead of solid
 
 
@@ -153,9 +154,16 @@ int main(int, char**)
     std::string input_file;
     std::vector<std::thread> decoder_threads;
     bool* decoding_flag = new bool(false);
+    bool* stop_flag = new bool(false);
+
     int gpu_index = 0;
     int to_display_frame_number = 0;
     int read_head = 0;
+
+    bool play_video = true;
+    bool toggle_play_status = false;
+
+    int labeling_frame_number = 0;
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -184,7 +192,7 @@ int main(int, char**)
         if (file_dialog.HasSelected())
         {
             input_file = file_dialog.GetSelected().string();
-            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer));
+            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag));
             file_dialog.ClearSelected();
         }
 
@@ -228,19 +236,46 @@ int main(int, char**)
             }
         }
 
-        // upload image to opengl 
+        // Render a video frame
+        if (toggle_play_status && play_video) {
+            play_video = false;
+            toggle_play_status = false;
+        }
+
+
+        
         bind_texture(&image_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
-        unbind_texture();
-            
-        
+        unbind_texture(); 
+
+
 
         // Render a video frame
         {
-            ImGui::Begin("Hello, video!");
-            ImGui::Text("pointer = %p", image_texture);
+            ImGui::Begin("Camera!");
             ImVec2 avail_size = ImGui::GetContentRegionAvail();
             ImGui::Image((void*)(intptr_t)image_texture, avail_size);
+
+            if (ImGui::Button(play_video ? ICON_FK_PAUSE : ICON_FK_PLAY))
+            {
+                play_video = !play_video;
+            }
+
+
+            ImGui::SameLine();
+            // Arrow buttons with Repeater
+            float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+            ImGui::PushButtonRepeat(true);
+            if (ImGui::Button(ICON_FK_MINUS)) { labeling_frame_number--; }
+            ImGui::SameLine(0.0f, spacing);
+            if (ImGui::Button(ICON_FK_PLUS)) {
+                // advance_clicks++;
+                play_video = true;
+                toggle_play_status = true;
+            }
+            ImGui::PopButtonRepeat();
+            ImGui::SameLine();
+            ImGui::SliderInt("##frame count", &to_display_frame_number, 1, 3000);
             ImGui::End();
         }
 
@@ -267,7 +302,7 @@ int main(int, char**)
 
         glfwSwapBuffers(window);
         
-        if(*decoding_flag){
+        if(*decoding_flag && play_video){
             to_display_frame_number++;
             display_buffer[read_head].available_to_write = true;
             read_head = (read_head + 1) % size_of_buffer;
@@ -283,7 +318,7 @@ int main(int, char**)
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    *decoding_flag = false;
+    *stop_flag = true;
     // wait for threads to join
     for (auto& t : decoder_threads)
         t.join();

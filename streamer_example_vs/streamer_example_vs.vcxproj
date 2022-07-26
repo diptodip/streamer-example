@@ -146,7 +146,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome4.h" />
     <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome5.h" />
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsFontAwesome6.h" />
+    <ClInclude Include="..\lib\IconFontCppHeaders\IconsForkAwesome.h" />
     <ClInclude Include="..\lib\imgui-filebrowser\imfilebrowser.h" />
     <ClInclude Include="..\lib\imgui\backends\imgui_impl_glfw.h" />
     <ClInclude Include="..\lib\imgui\backends\imgui_impl_opengl3.h" />
@@ -172,6 +175,7 @@
       <FileType>Document</FileType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </CudaCompile>
+    <None Include="..\lib\IconFontCppHeaders\IconsFontAwesome5.cs" />
     <None Include="..\src\create_image_cuda.cu" />
     <None Include="..\src\shader_picture.fs" />
     <None Include="..\src\shader_picture.vs" />
