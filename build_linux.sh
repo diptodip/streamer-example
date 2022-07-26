@@ -1,8 +1,8 @@
 #!/bin/bash
 mkdir -p release;
 rm -f release/streamer_example;
-cp src/Roboto-Regular.ttf Roboto-Regular.ttf
-cp src/fa-solid-900.ttf fa-solid-900.ttf
+#cp src/Roboto-Regular.ttf Roboto-Regular.ttf
+#cp src/fa-solid-900.ttf fa-solid-900.ttf
 
 nvcc -c src/create_image_cuda.cu -arch=sm_80 -o release/create_image_cuda.o
 nvcc -c src/ColorSpace.cu -arch=sm_80 -o release/ColorSpace.o
@@ -33,5 +33,3 @@ g++ -Ofast -ffast-math -std=c++17 \
     `pkg-config --static --libs glfw3` \
     `pkg-config --cflags libavformat libswscale libswresample libavutil libavcodec` \
     `pkg-config --libs libavformat libswscale libswresample libavutil libavcodec`
-
-./release/streamer_example
