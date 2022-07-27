@@ -42,7 +42,6 @@
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 
-
 int main(int, char**)
 {
 
@@ -160,10 +159,13 @@ int main(int, char**)
     int to_display_frame_number = 0;
     int read_head = 0;
 
-    bool play_video = true;
+    bool play_video = false;
     bool toggle_play_status = false;
 
     int labeling_frame_number = 0;
+
+    static bool show_app_layout = true;
+
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -178,12 +180,45 @@ int main(int, char**)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-
-        if (ImGui::Begin("File Browser"))
+        
+        if (ImGui::Begin("File Browser",  NULL, ImGuiWindowFlags_MenuBar))
         {
-            // open file dialog when user clicks this button
-            if (ImGui::Button("open file dialog"))
-                file_dialog.Open();
+
+            if (ImGui::BeginMenuBar())
+            {
+                if (ImGui::BeginMenu("File"))
+                {
+                    if (ImGui::MenuItem("Open")) { file_dialog.Open(); };
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenuBar();
+            }
+
+            static float f = 0.0f;
+            static int counter = 0;
+            ImGui::Text("Flip a coin here!");
+            ImGui::SameLine();
+            if (ImGui::Button("Flip!")) {
+                result = ((double)rand() / (RAND_MAX));
+                if (result > 0.5) {
+                    num_heads++;
+                }
+                else {
+                    num_tails++;
+                }
+            }
+            if (result > 0.5) {
+                ImGui::Text("Heads!");
+            }
+            else {
+                ImGui::Text("Tails!");
+            }
+            if ((num_heads + num_tails) > 0) {
+                ImGui::Text("Proportion heads: %.3f", (float)num_heads / (num_heads + num_tails));
+            }
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::Text("Frame number %d ", to_display_frame_number);
+
         }
         ImGui::End();
         
@@ -195,39 +230,9 @@ int main(int, char**)
             decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag));
             file_dialog.ClearSelected();
         }
-
-        // Show a simple window that we create ourselves. This is
-        // just to show that tracking of state is working
-        // separately from CUDA.
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-            ImGui::Begin("Hello, world!");
-            ImGui::Text("Flip a coin here!");
-            ImGui::SameLine();
-            if (ImGui::Button("Flip!")) {
-                result = ((double) rand() / (RAND_MAX));
-                if (result > 0.5) {
-                    num_heads++;
-                } else {
-                    num_tails++;
-                }
-            }
-            if (result > 0.5) {
-                ImGui::Text("Heads!");
-            } else {
-                ImGui::Text("Tails!");
-            }
-            if ((num_heads + num_tails) > 0) {
-                ImGui::Text("Proportion heads: %.3f", (float) num_heads / (num_heads + num_tails));
-            }
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::Text("Frame number %d ", to_display_frame_number);
-            ImGui::End();
-        }
-
         
-
+        
+        
         if (*decoding_flag) {
             // if the current frame is ready, upload for display, otherwise wait for the frame to get ready 
             while (display_buffer[read_head].frame_number != to_display_frame_number) {
@@ -236,25 +241,67 @@ int main(int, char**)
             }
         }
 
-        // Render a video frame
+
+
+        if (play_video) {
+            bind_texture(&image_texture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
+            unbind_texture();
+        }
+
+        
+
+
+
+        // for debugging purpose now
+        {
+            ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
+            {
+                // Left
+                static int selected = 0;
+                {
+                    for (int i = 0; i < size_of_buffer; i++)
+                    {
+                        // FIXME: Good candidate to use ImGuiSelectableFlags_SelectOnNav
+                        char label[128];
+                        sprintf(label, "MyBufferFrame %d", i);
+                        if (ImGui::Selectable(label, selected == i)) {
+                            selected = (i + read_head) % size_of_buffer;
+                            
+                            if (!play_video) {
+                                bind_texture(&image_texture);
+                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[selected].frame);
+                                unbind_texture();
+                            }
+                        }
+                    }
+                }
+                ImGui::SameLine();
+
+            }
+            ImGui::End();
+
+        }
+
+
         if (toggle_play_status && play_video) {
             play_video = false;
             toggle_play_status = false;
         }
 
 
-        
-        bind_texture(&image_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
-        unbind_texture(); 
-
-
-
         // Render a video frame
         {
+
             ImGui::Begin("Camera!");
+           
+            ImGui::BeginGroup();
+            ImGui::BeginChild("scene view", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+
             ImVec2 avail_size = ImGui::GetContentRegionAvail();
             ImGui::Image((void*)(intptr_t)image_texture, avail_size);
+            ImGui::EndChild();
 
             if (ImGui::Button(play_video ? ICON_FK_PAUSE : ICON_FK_PLAY))
             {
@@ -276,8 +323,14 @@ int main(int, char**)
             ImGui::PopButtonRepeat();
             ImGui::SameLine();
             ImGui::SliderInt("##frame count", &to_display_frame_number, 1, 3000);
+            ImGui::EndGroup();
+
             ImGui::End();
         }
+
+
+
+        
 
         // Rendering
         ImGui::Render();
@@ -301,12 +354,15 @@ int main(int, char**)
         }
 
         glfwSwapBuffers(window);
+ 
         
         if(*decoding_flag && play_video){
             to_display_frame_number++;
             display_buffer[read_head].available_to_write = true;
             read_head = (read_head + 1) % size_of_buffer;
         }
+        
+       
     }
 
 
