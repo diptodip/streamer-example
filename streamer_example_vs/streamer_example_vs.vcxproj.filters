@@ -119,6 +119,9 @@
     <ClCompile Include="..\src\decoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\FFmpegDemuxer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Font Include="..\src\Roboto-Regular.ttf">

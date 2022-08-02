@@ -19,29 +19,54 @@ void GetImage(CUdeviceptr dpSrc, uint8_t *pDst, int nWidth, int nHeight)
 }
 
 
-void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag)
+void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context)
 {
     CheckInputFile(input_file_name);
     std::cout << input_file_name << std::endl;
     
-
     CUdeviceptr pTmpImage = 0;
     ck(cuInit(0));
     CUcontext cuContext = NULL;
     createCudaContext(&cuContext, gpu_id, 0);
 
-    FFmpegDemuxer demuxer(input_file_name);
+    std::map<std::string, std::string> m;
+    size_t nVideoBytes = 0;
+    PacketData pktinfo;
+
+
+    FFmpegDemuxer demuxer(input_file_name, m);
     NvDecoder dec(cuContext, true, FFmpeg2NvCodecId(demuxer.GetVideoCodec()));
     int nWidth = 0, nHeight = 0;
 
-    int nVideoBytes = 0, nFrameReturned = 0, nFrame = 0, iMatrix = 0;
+    int nFrameReturned = 0, nFrame = 0, iMatrix = 0;
     uint8_t *pVideo = nullptr;
     uint8_t *pFrame;
     
     int buffer_head=0;
 
+    uint64_t decoder_frame_num;
+
     do{
-        demuxer.Demux(&pVideo, &nVideoBytes);
+
+        if (seek_context->use_seek) {
+
+            std::cout << "target_frame_number:" << seek_context->seek_frame << std::endl;
+            demuxer.Seek(*seek_context, pVideo, nVideoBytes, pktinfo);
+            decoder_frame_num = demuxer.FrameNumberFromTs(pktinfo.dts);
+            std::cout << "frame_number:" << decoder_frame_num << std::endl;
+
+            // reset the display buffer after seeking  
+            buffer_head = 0;
+            for (int i = 0; i < size_of_buffer; i++) {
+                display_buffer[i].available_to_write = true;
+            }
+            nFrame = decoder_frame_num;
+            seek_context->use_seek = false;
+        }
+        else {
+            demuxer.Demux(pVideo, nVideoBytes, pktinfo); 
+        }
+
         nFrameReturned = dec.Decode(pVideo, nVideoBytes);
 
         if (!nFrame && nFrameReturned)

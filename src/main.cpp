@@ -166,7 +166,10 @@ int main(int, char**)
 
     static bool show_app_layout = true;
 
+    SeekContext seek_context;
+    bool reset_read_head = false;
 
+    int test_slider;
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -180,7 +183,7 @@ int main(int, char**)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        
+       
         if (ImGui::Begin("File Browser",  NULL, ImGuiWindowFlags_MenuBar))
         {
 
@@ -227,7 +230,7 @@ int main(int, char**)
         if (file_dialog.HasSelected())
         {
             input_file = file_dialog.GetSelected().string();
-            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag));
+            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag, &seek_context));
             file_dialog.ClearSelected();
         }
         
@@ -323,13 +326,21 @@ int main(int, char**)
             ImGui::PopButtonRepeat();
             ImGui::SameLine();
             ImGui::SliderInt("##frame count", &to_display_frame_number, 1, 3000);
+            //std::cout << to_display_frame_number << std::endl;
+            ImGui::SliderInt("##test slider", &test_slider, 1, 3000);
+
+            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                std::cout << to_display_frame_number << std::endl;
+                //seek_context.seek_frame = (uint64_t) to_display_frame_number;
+                //std::cout << seek_context.seek_frame << std::endl;
+                //reset_read_head = true;
+                //seek_context.use_seek = true;
+            }
+
             ImGui::EndGroup();
 
             ImGui::End();
         }
-
-
-
         
 
         // Rendering
@@ -357,9 +368,14 @@ int main(int, char**)
  
         
         if(*decoding_flag && play_video){
-            to_display_frame_number++;
-            display_buffer[read_head].available_to_write = true;
-            read_head = (read_head + 1) % size_of_buffer;
+            if (reset_read_head) {
+                read_head = 0;
+            }
+            else {
+                to_display_frame_number++;
+                display_buffer[read_head].available_to_write = true;
+                read_head = (read_head + 1) % size_of_buffer;
+            } 
         }
         
        

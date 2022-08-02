@@ -189,6 +189,7 @@
     <ClCompile Include="..\lib\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\lib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\src\decoder.cpp" />
+    <ClCompile Include="..\src\FFmpegDemuxer.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\NvDecoder.cpp" />
   </ItemGroup>
