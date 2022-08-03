@@ -46,12 +46,15 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
 
     uint64_t decoder_frame_num;
 
+    bool seek_success_flag;
+
     do{
 
         if (seek_context->use_seek) {
 
             std::cout << "target_frame_number:" << seek_context->seek_frame << std::endl;
-            demuxer.Seek(*seek_context, pVideo, nVideoBytes, pktinfo);
+            seek_success_flag = demuxer.Seek(*seek_context, pVideo, nVideoBytes, pktinfo);
+            std::cout << "seek_success_flag: "  << seek_success_flag << std::endl;
             decoder_frame_num = demuxer.FrameNumberFromTs(pktinfo.dts);
             std::cout << "frame_number:" << decoder_frame_num << std::endl;
 
@@ -61,49 +64,99 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
                 display_buffer[i].available_to_write = true;
             }
             nFrame = decoder_frame_num;
-            seek_context->use_seek = false;
-        }
-        else {
-            demuxer.Demux(pVideo, nVideoBytes, pktinfo); 
-        }
+            int j=0;
 
-        nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+            while (j < size_of_buffer) {
+                std::cout << j << std::endl;
 
-        if (!nFrame && nFrameReturned)
-        {
-            LOG(INFO) << dec.GetVideoInfo();
-            // Get output frame size from decoder
-            nWidth = dec.GetWidth(); nHeight = dec.GetHeight();
-            int size_in_bytes = nWidth * nHeight * 4;
-            cuMemAlloc(&pTmpImage, size_in_bytes);
-        }        
-
-
-        for (int i = 0; i < nFrameReturned; i++) {
-            // decode frame and conversion
-            pFrame = dec.GetFrame();
-            iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;
-            Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), (uint8_t*)pTmpImage, 4 * dec.GetWidth(), dec.GetWidth(), dec.GetHeight(), iMatrix);
-            
-            if (nFrame == 0) {
-                GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
-                display_buffer[buffer_head].available_to_write = false;
-                *decoding_flag = true;
-                display_buffer[buffer_head].frame_number = nFrame;
-            }
-            else {
-                while (!display_buffer[buffer_head].available_to_write && !(*stop_flag)) {
-                    // if the next frame hasn't been displayed, the queue is full, sleep  
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                if (j == 0) {
+                    nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+                    std::cout << "nFrameReturned: " << nFrameReturned << std::endl;
+                }
+                else {
+                    demuxer.Demux(pVideo, nVideoBytes, pktinfo);
+                    nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+                    std::cout << "nFrameReturned: " << nFrameReturned << std::endl;
                 }
 
-                GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
-                display_buffer[buffer_head].available_to_write = false;
-                display_buffer[buffer_head].frame_number = nFrame;
+                for (int i = 0; i < nFrameReturned; i++) {
+                    // decode frame and conversion
+                    pFrame = dec.GetFrame();
+                    iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;
+                    Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), (uint8_t*)pTmpImage, 4 * dec.GetWidth(), dec.GetWidth(), dec.GetHeight(), iMatrix);
+
+                    if (nFrame == 0) {
+                        GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
+                        display_buffer[buffer_head].available_to_write = false;
+                        *decoding_flag = true;
+                        display_buffer[buffer_head].frame_number = nFrame;
+                    }
+                    else {
+                        while (!display_buffer[buffer_head].available_to_write && !(*stop_flag)) {
+                            // if the next frame hasn't been displayed, the queue is full, sleep  
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                        }
+
+                        GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
+                        display_buffer[buffer_head].available_to_write = false;
+                        display_buffer[buffer_head].frame_number = nFrame;
+                    }
+
+                    nFrame = nFrame + 1;
+                    buffer_head = (buffer_head + 1) % size_of_buffer;
+                    j++;
+                }
+            }
+            seek_context->seek_frame = decoder_frame_num;
+            seek_context->use_seek = false;
+            while (true) {
+                // sleep the decoding thread for the debugging purpose 
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
             
-            nFrame = nFrame + 1;
-            buffer_head = (buffer_head + 1) % size_of_buffer;
-        }	            
+        }
+        else
+        {
+
+            demuxer.Demux(pVideo, nVideoBytes, pktinfo);
+            nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+
+            if (!nFrame && nFrameReturned)
+            {
+                LOG(INFO) << dec.GetVideoInfo();
+                // Get output frame size from decoder
+                nWidth = dec.GetWidth(); nHeight = dec.GetHeight();
+                int size_in_bytes = nWidth * nHeight * 4;
+                cuMemAlloc(&pTmpImage, size_in_bytes);
+            }
+
+
+            for (int i = 0; i < nFrameReturned; i++) {
+                // decode frame and conversion
+                pFrame = dec.GetFrame();
+                iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;
+                Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), (uint8_t*)pTmpImage, 4 * dec.GetWidth(), dec.GetWidth(), dec.GetHeight(), iMatrix);
+
+                if (nFrame == 0) {
+                    GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
+                    display_buffer[buffer_head].available_to_write = false;
+                    *decoding_flag = true;
+                    display_buffer[buffer_head].frame_number = nFrame;
+                }
+                else {
+                    while (!display_buffer[buffer_head].available_to_write && !(*stop_flag)) {
+                        // if the next frame hasn't been displayed, the queue is full, sleep  
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+
+                    GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
+                    display_buffer[buffer_head].available_to_write = false;
+                    display_buffer[buffer_head].frame_number = nFrame;
+                }
+
+                nFrame = nFrame + 1;
+                buffer_head = (buffer_head + 1) % size_of_buffer;
+            }
+        }
     } while (!(*stop_flag));
 }

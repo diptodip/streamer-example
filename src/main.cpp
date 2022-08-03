@@ -142,7 +142,7 @@ int main(int, char**)
     int size_pic = 3208 * 2200 * 4 *  sizeof(unsigned char);
 
     // allocate display buffer
-    const int size_of_buffer = 8;
+    const int size_of_buffer = 16;
     PictureBuffer display_buffer[size_of_buffer];
     for (int i = 0; i < size_of_buffer; i++) {
         display_buffer[i].frame = (unsigned char*)malloc(size_pic);
@@ -167,9 +167,8 @@ int main(int, char**)
     static bool show_app_layout = true;
 
     SeekContext seek_context;
-    bool reset_read_head = false;
 
-    int test_slider;
+    int slider_frame_number = 0;
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -220,7 +219,7 @@ int main(int, char**)
                 ImGui::Text("Proportion heads: %.3f", (float)num_heads / (num_heads + num_tails));
             }
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::Text("Frame number %d ", to_display_frame_number);
+            ImGui::Text("Frame number %d ", display_buffer[read_head].frame_number);
 
         }
         ImGui::End();
@@ -325,20 +324,30 @@ int main(int, char**)
             }
             ImGui::PopButtonRepeat();
             ImGui::SameLine();
-            ImGui::SliderInt("##frame count", &to_display_frame_number, 1, 3000);
+
+            ImGui::SliderInt("##frame count", &slider_frame_number, 1, 5000);
+
             //std::cout << to_display_frame_number << std::endl;
-            ImGui::SliderInt("##test slider", &test_slider, 1, 3000);
+            //ImGui::SliderInt("##test slider", &test_slider, 1, 3000);
 
             if (ImGui::IsItemDeactivatedAfterEdit()) {
-                std::cout << to_display_frame_number << std::endl;
-                //seek_context.seek_frame = (uint64_t) to_display_frame_number;
-                //std::cout << seek_context.seek_frame << std::endl;
-                //reset_read_head = true;
-                //seek_context.use_seek = true;
+                std::cout << "slider frame number: " << slider_frame_number << std::endl;
+
+                seek_context.seek_frame = (uint64_t)slider_frame_number;
+                std::cout << "convert seek frame in main: " << seek_context.seek_frame << std::endl;
+                seek_context.use_seek = true;
+            
+                while (seek_context.use_seek) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                to_display_frame_number = seek_context.seek_frame;
+                read_head = 0;
+                *decoding_flag = false;
+                play_video = false;
+                std::cout << "main thread: " << to_display_frame_number << std::endl;
             }
 
             ImGui::EndGroup();
-
             ImGui::End();
         }
         
@@ -368,14 +377,10 @@ int main(int, char**)
  
         
         if(*decoding_flag && play_video){
-            if (reset_read_head) {
-                read_head = 0;
-            }
-            else {
-                to_display_frame_number++;
-                display_buffer[read_head].available_to_write = true;
-                read_head = (read_head + 1) % size_of_buffer;
-            } 
+            to_display_frame_number++;
+            display_buffer[read_head].available_to_write = true;
+            read_head = (read_head + 1) % size_of_buffer;
+            //slider_frame_number = to_display_frame_number;
         }
         
        
