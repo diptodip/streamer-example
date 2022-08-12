@@ -117,8 +117,8 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;$(SolutionDir)\lib;$(SolutionDir)\lib\nvcodec;$(SolutionDir)\lib\glm;$(SolutionDir)\lib\imgui;$(SolutionDir)\lib\FFmpeg\include;$(SolutionDir)\lib\GLFW;$(SolutionDir)\lib\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6\include;$(SolutionDir)\lib;$(SolutionDir)\lib\nvcodec;$(SolutionDir)\lib\glm;$(SolutionDir)\lib\imgui;$(SolutionDir)\lib\FFmpeg\include;$(SolutionDir)\lib\GLFW;$(SolutionDir)\lib\imgui\backends;$(SolutionDir)\lib\imgui-filebrowser;$(SolutionDir)\lib\IconFontCppHeaders;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -160,6 +160,7 @@
     <ClInclude Include="..\lib\imgui\imstb_textedit.h" />
     <ClInclude Include="..\lib\imgui\imstb_truetype.h" />
     <ClInclude Include="..\src\AppDecUtils.h" />
+    <ClInclude Include="..\src\buffer_utils.h" />
     <ClInclude Include="..\src\ColorSpace.h" />
     <ClInclude Include="..\src\create_image_cuda.h" />
     <ClInclude Include="..\src\decoder.h" />
@@ -188,6 +189,7 @@
     <ClCompile Include="..\lib\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\lib\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\lib\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\src\buffer_utils.cpp" />
     <ClCompile Include="..\src\decoder.cpp" />
     <ClCompile Include="..\src\FFmpegDemuxer.cpp" />
     <ClCompile Include="..\src\main.cpp" />

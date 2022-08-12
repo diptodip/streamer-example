@@ -693,6 +693,17 @@ int NvDecoder::Decode(const uint8_t *pData, int nSize, int nFlags, int64_t nTime
         packet.flags |= CUVID_PKT_ENDOFSTREAM;
     }
     NVDEC_API_CALL(cuvidParseVideoData(m_hParser, &packet));
+
+    // This post suggested to send the I-Frame twice, https://forums.developer.nvidia.com/t/nvdec-problems-with-seeking/79988
+    /*if (nFlags == CUVID_PKT_DISCONTINUITY) {
+        CUVIDSOURCEDATAPACKET packet1 = { 0 };
+
+        packet1.payload = pData;
+        packet1.payload_size = nSize;
+        packet1.flags = CUVID_PKT_TIMESTAMP;
+        packet1.timestamp = nTimestamp;
+        NVDEC_API_CALL(cuvidParseVideoData(m_hParser, &packet1));
+    }*/
     m_cuvidStream = 0;
 
     return m_nDecodedFrame;

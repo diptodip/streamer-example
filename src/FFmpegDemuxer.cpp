@@ -70,8 +70,6 @@ AVColorSpace FFmpegDemuxer::GetColorSpace() const { return color_space; }
 
 AVColorRange FFmpegDemuxer::GetColorRange() const { return color_range; }
 
-extern unsigned long GetNumDecodeSurfaces(cudaVideoCodec eCodec, unsigned int nWidth,
-    unsigned int nHeight);
 
 bool FFmpegDemuxer::Demux(uint8_t*& pVideo, size_t& rVideoBytes,
     PacketData& pktData, uint8_t** ppSEI,
@@ -217,7 +215,6 @@ int64_t FFmpegDemuxer::TsFromTime(double ts_sec)
     /* Internal timestamp representation is integer, so multiply to AV_TIME_BASE
      * and switch to fixed point precision arithmetics; */
     auto const ts_tbu = lround(ts_sec * AV_TIME_BASE);
-
     // Rescale the timestamp to value represented in stream base units;
     AVRational factor;
     factor.num = 1;
@@ -240,12 +237,17 @@ int64_t FFmpegDemuxer::FrameNumberFromTs(int64_t ts)
     factor.den = AV_TIME_BASE;
 
     auto const ts_tbu = av_rescale_q(ts, fmtc->streams[videoStream]->time_base, factor);
-    int64_t ts_sec = ts_tbu / AV_TIME_BASE;
-    int64_t frame_num = ts_sec * GetFramerate();
+    double ts_sec = (double)ts_tbu / (double)AV_TIME_BASE;
+    int64_t frame_num = (int64_t) (ts_sec * GetFramerate());
     return frame_num;
 }
 
-
+int64_t FFmpegDemuxer::FindClosestKeyFrame(int64_t frame_num, int key_frame_interval)
+{
+    int key_frame_frequency = (int) (key_frame_interval* GetFramerate());
+    int64_t key_frame_num = frame_num - (int64_t)(frame_num % key_frame_frequency);
+    return key_frame_num;
+}
 
 bool FFmpegDemuxer::Seek(SeekContext& seekCtx, uint8_t*& pVideo,
     size_t& rVideoBytes, PacketData& pktData,

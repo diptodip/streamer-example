@@ -6,6 +6,7 @@
 #include "FFmpegDemuxer.h"
 #include "AppDecUtils.h"
 #include "ColorSpace.h"
+#include "buffer_utils.h"
 
 struct PictureBuffer{
 	unsigned char* frame;

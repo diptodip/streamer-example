@@ -66,7 +66,7 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Streamer Example", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Streamer Example", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -142,7 +142,7 @@ int main(int, char**)
     int size_pic = 3208 * 2200 * 4 *  sizeof(unsigned char);
 
     // allocate display buffer
-    const int size_of_buffer = 16;
+    const int size_of_buffer = 32;
     PictureBuffer display_buffer[size_of_buffer];
     for (int i = 0; i < size_of_buffer; i++) {
         display_buffer[i].frame = (unsigned char*)malloc(size_pic);
@@ -219,8 +219,7 @@ int main(int, char**)
                 ImGui::Text("Proportion heads: %.3f", (float)num_heads / (num_heads + num_tails));
             }
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::Text("Frame number %d ", display_buffer[read_head].frame_number);
-
+            ImGui::Text("Frame number %d ", display_buffer[read_head].frame_number); 
         }
         ImGui::End();
         
@@ -251,26 +250,20 @@ int main(int, char**)
             unbind_texture();
         }
 
-        
-
-
 
         // for debugging purpose now
         {
             ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
             {
-                // Left
                 static int selected = 0;
                 {
                     for (int i = 0; i < size_of_buffer; i++)
                     {
-                        // FIXME: Good candidate to use ImGuiSelectableFlags_SelectOnNav
                         char label[128];
                         sprintf(label, "MyBufferFrame %d", i);
                         if (ImGui::Selectable(label, selected == i)) {
                             selected = (i + read_head) % size_of_buffer;
-                            
                             if (!play_video) {
                                 bind_texture(&image_texture);
                                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[selected].frame);
@@ -280,10 +273,10 @@ int main(int, char**)
                     }
                 }
                 ImGui::SameLine();
+                ImGui::Text("Frame number %d ", display_buffer[selected].frame_number);
 
             }
             ImGui::End();
-
         }
 
 
@@ -325,13 +318,15 @@ int main(int, char**)
             ImGui::PopButtonRepeat();
             ImGui::SameLine();
 
-            ImGui::SliderInt("##frame count", &slider_frame_number, 1, 5000);
+            ImGui::SliderInt("##frame count", &slider_frame_number, 1, 950);
 
             //std::cout << to_display_frame_number << std::endl;
             //ImGui::SliderInt("##test slider", &test_slider, 1, 3000);
 
             if (ImGui::IsItemDeactivatedAfterEdit()) {
                 std::cout << "slider frame number: " << slider_frame_number << std::endl;
+                // change to seek to closest keyframe 
+
 
                 seek_context.seek_frame = (uint64_t)slider_frame_number;
                 std::cout << "convert seek frame in main: " << seek_context.seek_frame << std::endl;
