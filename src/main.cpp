@@ -169,6 +169,7 @@ int main(int, char**)
     SeekContext seek_context;
 
     int slider_frame_number = 0;
+    bool just_seeked = false;
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -324,22 +325,18 @@ int main(int, char**)
             //ImGui::SliderInt("##test slider", &test_slider, 1, 3000);
 
             if (ImGui::IsItemDeactivatedAfterEdit()) {
-                std::cout << "slider frame number: " << slider_frame_number << std::endl;
                 // change to seek to closest keyframe 
-
-
                 seek_context.seek_frame = (uint64_t)slider_frame_number;
-                std::cout << "convert seek frame in main: " << seek_context.seek_frame << std::endl;
                 seek_context.use_seek = true;
-            
+
+                // synchronize seeking
                 while (seek_context.use_seek) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
-                to_display_frame_number = seek_context.seek_frame;
+
+                to_display_frame_number = seek_context.seek_frame+1;
                 read_head = 0;
-                *decoding_flag = false;
-                play_video = false;
-                std::cout << "main thread: " << to_display_frame_number << std::endl;
+                just_seeked = true;                 
             }
 
             ImGui::EndGroup();
@@ -371,14 +368,18 @@ int main(int, char**)
         glfwSwapBuffers(window);
  
         
-        if(*decoding_flag && play_video){
+        if(*decoding_flag && play_video && (!just_seeked)){
             to_display_frame_number++;
             display_buffer[read_head].available_to_write = true;
             read_head = (read_head + 1) % size_of_buffer;
             //slider_frame_number = to_display_frame_number;
         }
         
-       
+        if (just_seeked) {
+            just_seeked = false; play_video = true; 
+            //slider_frame_number = to_display_frame_number;
+        }
+
     }
 
 
