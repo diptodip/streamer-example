@@ -38,7 +38,6 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 
@@ -170,6 +169,9 @@ int main(int, char**)
 
     int slider_frame_number = 0;
     bool just_seeked = false;
+
+    bool slider_just_changed = false;
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -319,12 +321,11 @@ int main(int, char**)
             ImGui::PopButtonRepeat();
             ImGui::SameLine();
 
-            ImGui::SliderInt("##frame count", &slider_frame_number, 1, 950);
+            slider_just_changed = ImGui::SliderInt("##frame count", &slider_frame_number, 0, 950);
+            
+            if (slider_just_changed){
+                std::cout << "main, seeking: " << slider_frame_number << std::endl;
 
-            //std::cout << to_display_frame_number << std::endl;
-            //ImGui::SliderInt("##test slider", &test_slider, 1, 3000);
-
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
                 // change to seek to closest keyframe 
                 seek_context.seek_frame = (uint64_t)slider_frame_number;
                 seek_context.use_seek = true;
@@ -372,13 +373,14 @@ int main(int, char**)
             to_display_frame_number++;
             display_buffer[read_head].available_to_write = true;
             read_head = (read_head + 1) % size_of_buffer;
-            //slider_frame_number = to_display_frame_number;
+            slider_frame_number = to_display_frame_number;
         }
         
         if (just_seeked) {
             just_seeked = false; play_video = true; 
-            //slider_frame_number = to_display_frame_number;
         }
+
+
 
     }
 
