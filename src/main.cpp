@@ -145,6 +145,8 @@ int main(int, char**)
     PictureBuffer display_buffer[size_of_buffer];
     for (int i = 0; i < size_of_buffer; i++) {
         display_buffer[i].frame = (unsigned char*)malloc(size_pic);
+        clear_buffer_with_constant_image(display_buffer[i].frame, 3208, 2200);
+
         display_buffer[i].frame_number = 0;
         display_buffer[i].available_to_write = true;
     }
@@ -256,31 +258,63 @@ int main(int, char**)
 
         // for debugging purpose now
         {
+            static int selected = 0;
+            static int select_corr_head = 0;
             ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
             {
-                static int selected = 0;
                 {
                     for (int i = 0; i < size_of_buffer; i++)
                     {
                         char label[128];
-                        sprintf(label, "MyBufferFrame %d", i);
+                        sprintf(label, "Buffer %d", i);
                         if (ImGui::Selectable(label, selected == i)) {
-                            selected = (i + read_head) % size_of_buffer;
+                            // start from the lowest frame
+                            select_corr_head = (i + read_head) % size_of_buffer;
+
+                            // if not playing the video, then show what's in the buffer
                             if (!play_video) {
                                 bind_texture(&image_texture);
-                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[selected].frame);
+                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[select_corr_head].frame);
                                 unbind_texture();
                             }
                         }
                     }
                 }
-                ImGui::SameLine();
-                ImGui::Text("Frame number %d ", display_buffer[selected].frame_number);
 
+                ImGui::Separator();
+                
+                if (ImGui::Button(ICON_FK_MINUS) || ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true)) {
+                    if (selected > 0) {
+                        selected--;
+                        select_corr_head = (selected + read_head) % size_of_buffer;
+
+                        if (!play_video) {
+                            bind_texture(&image_texture);
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[select_corr_head].frame);
+                            unbind_texture();
+                        }
+                    }
+                };
+                
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_FK_PLUS) || ImGui::IsKeyPressed(ImGuiKey_RightBracket, true)) {
+                    if (selected < (size_of_buffer - 1)) {
+                        selected++;
+                        select_corr_head = (selected + read_head) % size_of_buffer;
+
+                        if (!play_video) {
+                            bind_texture(&image_texture);
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[select_corr_head].frame);
+                            unbind_texture();
+                        }
+                    }
+                };
             }
             ImGui::End();
         }
+
+
 
 
         if (toggle_play_status && play_video) {
