@@ -311,6 +311,7 @@ int main(int, char**)
                     }
                 };
             }
+            ImGui::Text("Frame number selected: %d", display_buffer[select_corr_head].frame_number);
             ImGui::End();
         }
 
@@ -369,7 +370,7 @@ int main(int, char**)
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
 
-                to_display_frame_number = seek_context.seek_frame+1;
+                to_display_frame_number = seek_context.seek_frame-1;
                 read_head = 0;
                 just_seeked = true;                 
             }

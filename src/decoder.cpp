@@ -53,7 +53,7 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
 
             //dec.setReconfigParams(NULL, NULL);
             buffer_head = 0;
-            nFrame = seek_context->seek_frame+1;
+            nFrame = seek_context->seek_frame-1;
 
             seek_context->use_seek = false;
                
