@@ -1,6 +1,6 @@
 #include "decoder.h"
 
-void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context)
+void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context, int* total_num_frame)
 {
     CheckInputFile(input_file_name);
     std::cout << input_file_name << std::endl;
@@ -26,6 +26,7 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
     int buffer_head=0;
 
     bool seek_success_flag;
+    bool demux_success;
 
     do{
 
@@ -44,61 +45,74 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
                 clear_buffer_with_constant_image(display_buffer[i].frame, 3208, 2200); 
                 display_buffer[i].available_to_write = true;
             }
-            nFrameReturned = dec.Decode(pVideo, nVideoBytes, CUVID_PKT_DISCONTINUITY, pktinfo.pts);
+            //nFrameReturned = dec.Decode(pVideo, nVideoBytes, CUVID_PKT_DISCONTINUITY, pktinfo.pts);
+            nFrameReturned = dec.Decode(NULL, 0, CUVID_PKT_DISCONTINUITY);
             std::cout << "nFrameReturned right after seeking: " << nFrameReturned << std::endl;
+           
             for (int i = 0; i < nFrameReturned; i++) {
                 // decode frame and conversion
                 pFrame = dec.GetFrame();
             }
 
+            dec.Decode(pVideo, nVideoBytes);
+
             //dec.setReconfigParams(NULL, NULL);
             buffer_head = 0;
-            nFrame = seek_context->seek_frame-1;
+            nFrame = seek_context->seek_frame;
 
             seek_context->use_seek = false;
                
         }
         else {
-            demuxer.Demux(pVideo, nVideoBytes, pktinfo);
-        }
-        nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+            demux_success = demuxer.Demux(pVideo, nVideoBytes, pktinfo);
 
-        if (!nFrame && nFrameReturned)
-        {
-            LOG(INFO) << dec.GetVideoInfo();
-            // Get output frame size from decoder
-            nWidth = dec.GetWidth(); nHeight = dec.GetHeight();
-            int size_in_bytes = nWidth * nHeight * 4;
-            cuMemAlloc(&pTmpImage, size_in_bytes);
-        }
-
-
-        for (int i = 0; i < nFrameReturned; i++) {
-            // decode frame and conversion
-            pFrame = dec.GetFrame();
-            iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;
-            Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), (uint8_t*)pTmpImage, 4 * dec.GetWidth(), dec.GetWidth(), dec.GetHeight(), iMatrix);
-
-            if (nFrame == 0) {
-                GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
-                display_buffer[buffer_head].available_to_write = false;
-                *decoding_flag = true;
-                display_buffer[buffer_head].frame_number = nFrame;
+            if (!demux_success) 
+            {
+                // end of stream
+                nFrameReturned = dec.Decode(NULL, 0, CUVID_PKT_DISCONTINUITY);
+                *total_num_frame = nFrame + nFrameReturned; //std::cout << "end_frame_number: " << *end_frame_number << std::endl;
             }
             else {
-                while (!display_buffer[buffer_head].available_to_write && !(*stop_flag) && !(seek_context->use_seek)) {
-                    // if the next frame hasn't been displayed, the queue is full, sleep  
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
+                nFrameReturned = dec.Decode(pVideo, nVideoBytes);
+            }
+            
 
-                GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
-                display_buffer[buffer_head].available_to_write = false;
-                display_buffer[buffer_head].frame_number = nFrame;
+            if (!nFrame && nFrameReturned)
+            {
+                LOG(INFO) << dec.GetVideoInfo();
+                // Get output frame size from decoder
+                nWidth = dec.GetWidth(); nHeight = dec.GetHeight();
+                int size_in_bytes = nWidth * nHeight * 4;
+                cuMemAlloc(&pTmpImage, size_in_bytes);
             }
 
-            nFrame = nFrame + 1;
-            buffer_head = (buffer_head + 1) % size_of_buffer;
+
+            for (int i = 0; i < nFrameReturned; i++) {
+                // decode frame and conversion
+                pFrame = dec.GetFrame();
+                iMatrix = dec.GetVideoFormatInfo().video_signal_description.matrix_coefficients;
+                Nv12ToColor32<RGBA32>(pFrame, dec.GetWidth(), (uint8_t*)pTmpImage, 4 * dec.GetWidth(), dec.GetWidth(), dec.GetHeight(), iMatrix);
+
+                if (nFrame == 0) {
+                    GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
+                    display_buffer[buffer_head].available_to_write = false;
+                    *decoding_flag = true;
+                    display_buffer[buffer_head].frame_number = nFrame;
+                }
+                else {
+                    while (!display_buffer[buffer_head].available_to_write && !(*stop_flag) && !(seek_context->use_seek)) {
+                        // if the next frame hasn't been displayed, the queue is full, sleep  
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+
+                    GetImage(pTmpImage, display_buffer[buffer_head].frame, 4 * dec.GetWidth(), dec.GetHeight());
+                    display_buffer[buffer_head].available_to_write = false;
+                    display_buffer[buffer_head].frame_number = nFrame;
+                }
+                nFrame = nFrame + 1;
+                buffer_head = (buffer_head + 1) % size_of_buffer;
+            }
+                      
         }
-        
     } while (!(*stop_flag));
 }

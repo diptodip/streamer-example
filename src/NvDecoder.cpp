@@ -689,8 +689,10 @@ int NvDecoder::Decode(const uint8_t *pData, int nSize, int nFlags, int64_t nTime
     packet.payload_size = nSize;
     packet.flags = nFlags | CUVID_PKT_TIMESTAMP;
     packet.timestamp = nTimestamp;
-    if (!pData || nSize == 0) {
-        packet.flags |= CUVID_PKT_ENDOFSTREAM;
+    if (nFlags != CUVID_PKT_DISCONTINUITY) {
+        if (!pData || nSize == 0) {
+            packet.flags |= CUVID_PKT_ENDOFSTREAM;
+        }
     }
     NVDEC_API_CALL(cuvidParseVideoData(m_hParser, &packet));
 

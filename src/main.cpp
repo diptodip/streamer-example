@@ -155,6 +155,7 @@ int main(int, char**)
     std::vector<std::thread> decoder_threads;
     bool* decoding_flag = new bool(false);
     bool* stop_flag = new bool(false);
+    int* total_num_frame = new int(INT_MAX);
 
     int gpu_index = 0;
     int to_display_frame_number = 0;
@@ -162,8 +163,6 @@ int main(int, char**)
 
     bool play_video = false;
     bool toggle_play_status = false;
-
-    int labeling_frame_number = 0;
 
     static bool show_app_layout = true;
 
@@ -233,30 +232,29 @@ int main(int, char**)
         if (file_dialog.HasSelected())
         {
             input_file = file_dialog.GetSelected().string();
-            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag, &seek_context));
+            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag, &seek_context, total_num_frame));
             file_dialog.ClearSelected();
         }
         
         
-        
-        if (*decoding_flag) {
+        if (*decoding_flag && play_video &&(to_display_frame_number < (*total_num_frame))) {
             // if the current frame is ready, upload for display, otherwise wait for the frame to get ready 
             while (display_buffer[read_head].frame_number != to_display_frame_number) {
                 //std::cout << display_buffer[read_head].frame_number << ", " << to_display_frame_number << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-        }
 
-
-
-        if (play_video) {
             bind_texture(&image_texture);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
             unbind_texture();
         }
 
 
-        // for debugging purpose now
+
+        //if (play_video) {}
+
+
+        // show frames in the buffer if selected
         {
             static int selected = 0;
             static int select_corr_head = 0;
@@ -346,7 +344,6 @@ int main(int, char**)
             // Arrow buttons with Repeater
             float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
             ImGui::PushButtonRepeat(true);
-            if (ImGui::Button(ICON_FK_MINUS)) { labeling_frame_number--; }
             ImGui::SameLine(0.0f, spacing);
             if (ImGui::Button(ICON_FK_PLUS)) {
                 // advance_clicks++;
@@ -370,7 +367,7 @@ int main(int, char**)
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
 
-                to_display_frame_number = seek_context.seek_frame-1;
+                to_display_frame_number = seek_context.seek_frame;
                 read_head = 0;
                 just_seeked = true;                 
             }
@@ -404,7 +401,7 @@ int main(int, char**)
         glfwSwapBuffers(window);
  
         
-        if(*decoding_flag && play_video && (!just_seeked)){
+        if(*decoding_flag && play_video && (!just_seeked) && (to_display_frame_number < (*total_num_frame-1))){
             to_display_frame_number++;
             display_buffer[read_head].available_to_write = true;
             read_head = (read_head + 1) % size_of_buffer;
