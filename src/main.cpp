@@ -237,7 +237,7 @@ int main(int, char**)
         }
         
         
-        if (*decoding_flag && play_video &&(to_display_frame_number < (*total_num_frame))) {
+        if (*decoding_flag && play_video) {
             // if the current frame is ready, upload for display, otherwise wait for the frame to get ready 
             while (display_buffer[read_head].frame_number != to_display_frame_number) {
                 //std::cout << display_buffer[read_head].frame_number << ", " << to_display_frame_number << std::endl;
@@ -248,10 +248,6 @@ int main(int, char**)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
             unbind_texture();
         }
-
-
-
-        //if (play_video) {}
 
 
         // show frames in the buffer if selected
@@ -314,8 +310,6 @@ int main(int, char**)
         }
 
 
-
-
         if (toggle_play_status && play_video) {
             play_video = false;
             toggle_play_status = false;
@@ -334,9 +328,27 @@ int main(int, char**)
             ImGui::Image((void*)(intptr_t)image_texture, avail_size);
             ImGui::EndChild();
 
-            if (ImGui::Button(play_video ? ICON_FK_PAUSE : ICON_FK_PLAY))
-            {
-                play_video = !play_video;
+            if (to_display_frame_number == (*total_num_frame - 1)) {
+                if (ImGui::Button(ICON_FK_REPEAT)) {
+                    // seek to zero
+                    seek_context.seek_frame = 0;
+                    seek_context.use_seek = true;
+
+                    // synchronize seeking
+                    while (seek_context.use_seek) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+
+                    to_display_frame_number = seek_context.seek_frame;
+                    read_head = 0;
+                    just_seeked = true;
+                }
+            }
+            else {
+                if (ImGui::Button(play_video ? ICON_FK_PAUSE : ICON_FK_PLAY))
+                {
+                    play_video = !play_video;
+                }
             }
 
 
