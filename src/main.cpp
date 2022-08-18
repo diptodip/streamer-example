@@ -156,6 +156,7 @@ int main(int, char**)
     bool* decoding_flag = new bool(false);
     bool* stop_flag = new bool(false);
     int* total_num_frame = new int(INT_MAX);
+    int* estimated_num_frames = new int(0);
 
     int gpu_index = 0;
     int to_display_frame_number = 0;
@@ -232,7 +233,7 @@ int main(int, char**)
         if (file_dialog.HasSelected())
         {
             input_file = file_dialog.GetSelected().string();
-            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag, &seek_context, total_num_frame));
+            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag, &seek_context, total_num_frame, estimated_num_frames));
             file_dialog.ClearSelected();
         }
         
@@ -365,7 +366,7 @@ int main(int, char**)
             ImGui::PopButtonRepeat();
             ImGui::SameLine();
 
-            slider_just_changed = ImGui::SliderInt("##frame count", &slider_frame_number, 0, 950);
+            slider_just_changed = ImGui::SliderInt("##frame count", &slider_frame_number, 0, *estimated_num_frames);
             
             if (slider_just_changed){
                 std::cout << "main, seeking: " << slider_frame_number << std::endl;

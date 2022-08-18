@@ -1,6 +1,6 @@
 #include "decoder.h"
 
-void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context, int* total_num_frame)
+void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context, int* total_num_frame, int* estimated_num_frames)
 {
     CheckInputFile(input_file_name);
     std::cout << input_file_name << std::endl;
@@ -27,6 +27,11 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
 
     bool seek_success_flag;
     bool demux_success;
+
+
+    double video_length = demuxer.GetDuration();
+    double frame_rate = demuxer.GetFramerate();
+    *estimated_num_frames = int(video_length * frame_rate);
 
     do{
 
