@@ -23,13 +23,17 @@ g++ -Ofast -ffast-math -std=c++17 \
     -o release/*.o \
     -Ilib/nvcodec \
     -o release/streamer_example -I ./src/ src/*.cpp \
-    -I/usr/local/cuda-11.4/include \
+    -I/usr/local/cuda/include \
     -I$DIR_IMGUI \
     -I$DIR_IMGUI/backends \
     -Ilib/IconFontCppHeaders \
     -Ilib/imgui-filebrowser \
-    -L/usr/local/cuda-11.4/lib64/ -lcudart -lcuda -lnppicc -lnvcuvid \
+    -L/usr/local/cuda/lib64/ -lcudart -lcuda -lnppicc -lnvcuvid \
     -lGLEW -lGLU -lGL \
+    -lpthread \
     `pkg-config --static --libs glfw3` \
-    `pkg-config --cflags libavformat libswscale libswresample libavutil libavcodec` \
-    `pkg-config --libs libavformat libswscale libswresample libavutil libavcodec`
+    -I/home/jinyao/nvidia/ffmpeg/build/include/ \
+    -L/home/jinyao/nvidia/ffmpeg/build/lib/ -lavformat -lswscale -lswresample -lavutil -lavcodec
+
+
+    

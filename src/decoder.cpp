@@ -32,6 +32,8 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
     double video_length = demuxer.GetDuration();
     double frame_rate = demuxer.GetFramerate();
     *estimated_num_frames = int(video_length * frame_rate);
+    std::cout << "estimated_num_frames:" << *estimated_num_frames << std::endl;
+
 
     do{
 
@@ -75,7 +77,7 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
             {
                 // end of stream
                 nFrameReturned = dec.Decode(NULL, 0, CUVID_PKT_DISCONTINUITY);
-                *total_num_frame = nFrame + nFrameReturned; //std::cout << "end_frame_number: " << *end_frame_number << std::endl;
+                *total_num_frame = nFrame + nFrameReturned; 
             }
             else {
                 nFrameReturned = dec.Decode(pVideo, nVideoBytes);
@@ -116,6 +118,11 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
                 }
                 nFrame = nFrame + 1;
                 buffer_head = (buffer_head + 1) % size_of_buffer;
+
+                // for debugging purpose 
+                if (!demux_success){
+                    std::cout << "total_num_frame: " << *total_num_frame << std::endl;
+                }
             }
                       
         }
