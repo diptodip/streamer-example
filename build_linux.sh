@@ -32,8 +32,8 @@ g++ -Ofast -ffast-math -std=c++17 \
     -lGLEW -lGLU -lGL \
     -lpthread \
     `pkg-config --static --libs glfw3` \
-    -I/home/jinyao/nvidia/ffmpeg/build/include/ \
-    -L/home/jinyao/nvidia/ffmpeg/build/lib/ -lavformat -lswscale -lswresample -lavutil -lavcodec
+    -L/home/jinyao/Build/nvidia/FFmpeg/build/lib -lavformat -lswscale -lswresample -lavutil -lavcodec \
+    -I/home/jinyao/Build/nvidia/FFmpeg/build/include \
 
 
     
