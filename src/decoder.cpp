@@ -38,6 +38,7 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
 
     do{
 
+        // todo: need to make seek_context thread safe
         if (seek_context->use_seek) {
 
             //demuxer.Flush();
