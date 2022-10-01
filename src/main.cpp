@@ -278,70 +278,70 @@ int main(int, char**)
         }
 
 
-        // // show frames in the buffer if selected
-        // {
-        //     static int selected = 0;
-        //     static int select_corr_head = 0;
-        //     ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
-        //     if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
-        //     {
-        //         {
-        //             for (int i = 0; i < size_of_buffer; i++)
-        //             {
-        //                 char label[128];
-        //                 sprintf(label, "Buffer %d", i);
-        //                 if (ImGui::Selectable(label, selected == i)) {
-        //                     // start from the lowest frame
-        //                     select_corr_head = (i + read_head) % size_of_buffer;
+        // show frames in the buffer if selected
+        if (video_loaded && (!play_video))
+        {
+            static int selected = 0;
+            static int select_corr_head = 0;
+            ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
+            {
+                {
+                    for (int i = 0; i < size_of_buffer; i++)
+                    {
+                        char label[128];
+                        sprintf(label, "Buffer %d", i);
+                        if (ImGui::Selectable(label, selected == i)) {
+                            // start from the lowest frame
+                            select_corr_head = (i + read_head) % size_of_buffer;
 
-        //                     // if not playing the video, then show what's in the buffer
-        //                     if (!play_video) {
-        //                         for(int j=0; j<num_cams; j++){
-        //                             bind_texture(&image_texture[j]);
-        //                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
-        //                             unbind_texture();
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
+                            // if not playing the video, then show what's in the buffer
+                            if (!play_video) {
+                                for(int j=0; j<num_cams; j++){
+                                    bind_texture(&image_texture[j]);
+                                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
+                                    unbind_texture();
+                                }
+                            }
+                        }
+                    }
+                }
 
-        //         ImGui::Separator();
+                ImGui::Separator();
                 
-        //         if (ImGui::Button(ICON_FK_MINUS) || ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true)) {
-        //             if (selected > 0) {
-        //                 selected--;
-        //                 select_corr_head = (selected + read_head) % size_of_buffer;
+                if (ImGui::Button(ICON_FK_MINUS) || ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true)) {
+                    if (selected > 0) {
+                        selected--;
+                        select_corr_head = (selected + read_head) % size_of_buffer;
 
-        //                 if (!play_video) {
-        //                     for(int j=0; j<num_cams; j++){
-        //                         bind_texture(&image_texture[j]);
-        //                         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
-        //                         unbind_texture();
-        //                     }
-        //                 }
-        //             }
-        //         };
+                        for(int j=0; j<num_cams; j++){
+                            bind_texture(&image_texture[j]);
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
+                            unbind_texture();
+                        }
+                        
+                    }
+                };
                 
-        //         ImGui::SameLine();
-        //         if (ImGui::Button(ICON_FK_PLUS) || ImGui::IsKeyPressed(ImGuiKey_RightBracket, true)) {
-        //             if (selected < (size_of_buffer - 1)) {
-        //                 selected++;
-        //                 select_corr_head = (selected + read_head) % size_of_buffer;
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_FK_PLUS) || ImGui::IsKeyPressed(ImGuiKey_RightBracket, true)) {
+                    if (selected < (size_of_buffer - 1)) {
+                        selected++;
+                        select_corr_head = (selected + read_head) % size_of_buffer;
 
-        //                 if (!play_video) {
-        //                     for(int j=0; j<num_cams; j++){
-        //                         bind_texture(&image_texture[j]);
-        //                         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
-        //                         unbind_texture();
-        //                     }
-        //                 }
-        //             }
-        //         };
-        //     }
-        //     ImGui::Text("Frame number selected: %d", display_buffer[0][select_corr_head].frame_number);
-        //     ImGui::End();
-        // }
+                        if (!play_video) {
+                            for(int j=0; j<num_cams; j++){
+                                bind_texture(&image_texture[j]);
+                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
+                                unbind_texture();
+                            }
+                        }
+                    }
+                };
+            }
+            ImGui::Text("Frame number selected: %d", display_buffer[0][select_corr_head].frame_number);
+            ImGui::End();
+        }
 
 
         if (toggle_play_status && play_video) {
