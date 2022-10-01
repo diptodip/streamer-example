@@ -111,24 +111,27 @@ int main(int, char**)
     io.Fonts->AddFontFromFileTTF("../fonts/forkawesome-webfont.ttf", 15.0f, &icons_config, icons_ranges);
     // use FONT_ICON_FILE_NAME_FAR if you want regular instead of solid
 
+    int MAX_VIEWS = 4;
+
 
     // Create a OpenGL texture identifier
-    GLuint image_texture;
-    glGenTextures(1, &image_texture);
-    glBindTexture(GL_TEXTURE_2D, image_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    // Setup filtering parameters for display
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
-
+    GLuint image_texture[MAX_VIEWS];
+    for(int j=0; j<MAX_VIEWS; j++){
+        glGenTextures(1, &image_texture[j]);
+        glBindTexture(GL_TEXTURE_2D, image_texture[j]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        // Setup filtering parameters for display
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
+    }
 
     // Our state
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);
 
 
-    ImGui::FileBrowser file_dialog;
+    ImGui::FileBrowser file_dialog(ImGuiFileBrowserFlags_MultipleSelection);
     file_dialog.SetTitle("title");
     file_dialog.SetTypeFilters({ ".mp4" });
 
@@ -142,16 +145,25 @@ int main(int, char**)
 
     // allocate display buffer
     const int size_of_buffer = 32;
-    PictureBuffer display_buffer[size_of_buffer];
-    for (int i = 0; i < size_of_buffer; i++) {
-        display_buffer[i].frame = (unsigned char*)malloc(size_pic);
-        clear_buffer_with_constant_image(display_buffer[i].frame, 3208, 2200);
 
-        display_buffer[i].frame_number = 0;
-        display_buffer[i].available_to_write = true;
+    // right now, allocate more than needed, maybe  switch to vector?, need to think about it  
+    PictureBuffer display_buffer[MAX_VIEWS][size_of_buffer];
+    for(int j=0; j<MAX_VIEWS; j++){
+        for (int i = 0; i < size_of_buffer; i++) {
+            display_buffer[j][i].frame = (unsigned char*)malloc(size_pic);
+            clear_buffer_with_constant_image(display_buffer[j][i].frame, 3208, 2200);
+
+            display_buffer[j][i].frame_number = 0;
+            display_buffer[j][i].available_to_write = true;
+        }
     }
+    
+    std::vector<std::filesystem::path> input_files;
+    std::vector<std::string> input_file_names;
+    std::vector<std::string> camera_names;
 
-    std::string input_file;
+
+    int num_cams = 1;
     std::vector<std::thread> decoder_threads;
     bool* decoding_flag = new bool(false);
     bool* stop_flag = new bool(false);
@@ -173,6 +185,8 @@ int main(int, char**)
     bool just_seeked = false;
 
     bool slider_just_changed = false;
+    bool video_loaded = false;
+
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -186,7 +200,6 @@ int main(int, char**)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
        
         if (ImGui::Begin("File Browser",  NULL, ImGuiWindowFlags_MenuBar))
         {
@@ -224,7 +237,7 @@ int main(int, char**)
                 ImGui::Text("Proportion heads: %.3f", (float)num_heads / (num_heads + num_tails));
             }
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::Text("Frame number %d ", display_buffer[read_head].frame_number); 
+            ImGui::Text("Frame number %d ", display_buffer[0][read_head].frame_number); 
         }
         ImGui::End();
         
@@ -232,83 +245,103 @@ int main(int, char**)
 
         if (file_dialog.HasSelected())
         {
-            input_file = file_dialog.GetSelected().string();
-            decoder_threads.push_back(std::thread(&decoder_process, input_file.c_str(), gpu_index, display_buffer, decoding_flag, size_of_buffer, stop_flag, &seek_context, total_num_frame, estimated_num_frames));
+            input_files = file_dialog.GetMultiSelected();
+            num_cams = input_files.size();
+
+            // multiple threads for decoding for selected videos 
+            for(unsigned int i = 0; i < num_cams; i++)
+            {
+                input_file_names.push_back(input_files[i].string());
+                std::size_t cam_string_position = input_file_names[i].find("Cam");      // position of "Cam" in str
+                std::string cam_string = input_file_names[i].substr(cam_string_position);     // get from "Cam" to the end
+                camera_names.push_back(cam_string);
+                decoder_threads.push_back(std::thread(&decoder_process, input_file_names[i].c_str(), gpu_index, display_buffer[i], decoding_flag, size_of_buffer, stop_flag, &seek_context, total_num_frame, estimated_num_frames));
+            }
+
+            video_loaded = true;
             file_dialog.ClearSelected();
         }
         
         
         if (*decoding_flag && play_video) {
-            // if the current frame is ready, upload for display, otherwise wait for the frame to get ready 
-            while (display_buffer[read_head].frame_number != to_display_frame_number) {
-                //std::cout << display_buffer[read_head].frame_number << ", " << to_display_frame_number << std::endl;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-
-            bind_texture(&image_texture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[read_head].frame);
-            unbind_texture();
-        }
-
-
-        // show frames in the buffer if selected
-        {
-            static int selected = 0;
-            static int select_corr_head = 0;
-            ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
-            if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
-            {
-                {
-                    for (int i = 0; i < size_of_buffer; i++)
-                    {
-                        char label[128];
-                        sprintf(label, "Buffer %d", i);
-                        if (ImGui::Selectable(label, selected == i)) {
-                            // start from the lowest frame
-                            select_corr_head = (i + read_head) % size_of_buffer;
-
-                            // if not playing the video, then show what's in the buffer
-                            if (!play_video) {
-                                bind_texture(&image_texture);
-                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[select_corr_head].frame);
-                                unbind_texture();
-                            }
-                        }
-                    }
+            for(int j=0; j<num_cams; j++){
+                // if the current frame is ready, upload for display, otherwise wait for the frame to get ready 
+                while (display_buffer[j][read_head].frame_number != to_display_frame_number) {
+                    //std::cout << display_buffer[read_head].frame_number << ", " << to_display_frame_number << std::endl;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
 
-                ImGui::Separator();
-                
-                if (ImGui::Button(ICON_FK_MINUS) || ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true)) {
-                    if (selected > 0) {
-                        selected--;
-                        select_corr_head = (selected + read_head) % size_of_buffer;
-
-                        if (!play_video) {
-                            bind_texture(&image_texture);
-                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[select_corr_head].frame);
-                            unbind_texture();
-                        }
-                    }
-                };
-                
-                ImGui::SameLine();
-                if (ImGui::Button(ICON_FK_PLUS) || ImGui::IsKeyPressed(ImGuiKey_RightBracket, true)) {
-                    if (selected < (size_of_buffer - 1)) {
-                        selected++;
-                        select_corr_head = (selected + read_head) % size_of_buffer;
-
-                        if (!play_video) {
-                            bind_texture(&image_texture);
-                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[select_corr_head].frame);
-                            unbind_texture();
-                        }
-                    }
-                };
+                bind_texture(&image_texture[j]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][read_head].frame);
+                unbind_texture();
             }
-            ImGui::Text("Frame number selected: %d", display_buffer[select_corr_head].frame_number);
-            ImGui::End();
         }
+
+
+        // // show frames in the buffer if selected
+        // {
+        //     static int selected = 0;
+        //     static int select_corr_head = 0;
+        //     ImGui::SetNextWindowSize(ImVec2(500, 440), ImGuiCond_FirstUseEver);
+        //     if (ImGui::Begin("Frames in the buffer", NULL, ImGuiWindowFlags_MenuBar))
+        //     {
+        //         {
+        //             for (int i = 0; i < size_of_buffer; i++)
+        //             {
+        //                 char label[128];
+        //                 sprintf(label, "Buffer %d", i);
+        //                 if (ImGui::Selectable(label, selected == i)) {
+        //                     // start from the lowest frame
+        //                     select_corr_head = (i + read_head) % size_of_buffer;
+
+        //                     // if not playing the video, then show what's in the buffer
+        //                     if (!play_video) {
+        //                         for(int j=0; j<num_cams; j++){
+        //                             bind_texture(&image_texture[j]);
+        //                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
+        //                             unbind_texture();
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+
+        //         ImGui::Separator();
+                
+        //         if (ImGui::Button(ICON_FK_MINUS) || ImGui::IsKeyPressed(ImGuiKey_LeftBracket, true)) {
+        //             if (selected > 0) {
+        //                 selected--;
+        //                 select_corr_head = (selected + read_head) % size_of_buffer;
+
+        //                 if (!play_video) {
+        //                     for(int j=0; j<num_cams; j++){
+        //                         bind_texture(&image_texture[j]);
+        //                         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
+        //                         unbind_texture();
+        //                     }
+        //                 }
+        //             }
+        //         };
+                
+        //         ImGui::SameLine();
+        //         if (ImGui::Button(ICON_FK_PLUS) || ImGui::IsKeyPressed(ImGuiKey_RightBracket, true)) {
+        //             if (selected < (size_of_buffer - 1)) {
+        //                 selected++;
+        //                 select_corr_head = (selected + read_head) % size_of_buffer;
+
+        //                 if (!play_video) {
+        //                     for(int j=0; j<num_cams; j++){
+        //                         bind_texture(&image_texture[j]);
+        //                         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3208, 2200, 0, GL_RGBA, GL_UNSIGNED_BYTE, display_buffer[j][select_corr_head].frame);
+        //                         unbind_texture();
+        //                     }
+        //                 }
+        //             }
+        //         };
+        //     }
+        //     ImGui::Text("Frame number selected: %d", display_buffer[0][select_corr_head].frame_number);
+        //     ImGui::End();
+        // }
 
 
         if (toggle_play_status && play_video) {
@@ -318,21 +351,62 @@ int main(int, char**)
 
 
         // Render a video frame
-        {
+        if (video_loaded){        
+            for(int j=0; j<num_cams; j++)
+            {
+                ImGui::Begin(camera_names[j].c_str());           
+                ImGui::BeginGroup();
 
-            ImGui::Begin("Camera!");
-           
-            ImGui::BeginGroup();
-            ImGui::BeginChild("scene view", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+                std::string scene_name = "scene view" + std::to_string(j);
+                ImGui::BeginChild(scene_name.c_str(),  ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below
+                ImVec2 avail_size = ImGui::GetContentRegionAvail();
+                ImGui::Image((void*)(intptr_t)image_texture[j], avail_size);
+                ImGui::EndChild();
 
-            ImVec2 avail_size = ImGui::GetContentRegionAvail();
-            ImGui::Image((void*)(intptr_t)image_texture, avail_size);
-            ImGui::EndChild();
+                if (to_display_frame_number == (*total_num_frame - 1)) {
+                    if (ImGui::Button(ICON_FK_REPEAT)) {
+                        // seek to zero
+                        seek_context.seek_frame = 0;
+                        seek_context.use_seek = true;
 
-            if (to_display_frame_number == (*total_num_frame - 1)) {
-                if (ImGui::Button(ICON_FK_REPEAT)) {
-                    // seek to zero
-                    seek_context.seek_frame = 0;
+                        // synchronize seeking
+                        while (seek_context.use_seek) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                        }
+
+                        to_display_frame_number = seek_context.seek_frame;
+                        read_head = 0;
+                        just_seeked = true;
+                    }
+                }
+                else {
+                    if (ImGui::Button(play_video ? ICON_FK_PAUSE : ICON_FK_PLAY))
+                    {
+                        play_video = !play_video;
+                    }
+                }
+
+
+                ImGui::SameLine();
+                // Arrow buttons with Repeater
+                float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+                ImGui::PushButtonRepeat(true);
+                ImGui::SameLine(0.0f, spacing);
+                if (ImGui::Button(ICON_FK_PLUS)) {
+                    // advance_clicks++;
+                    play_video = true;
+                    toggle_play_status = true;
+                }
+                ImGui::PopButtonRepeat();
+                ImGui::SameLine();
+
+                slider_just_changed = ImGui::SliderInt("##frame count", &slider_frame_number, 0, *estimated_num_frames);
+                
+                if (slider_just_changed){
+                    std::cout << "main, seeking: " << slider_frame_number << std::endl;
+
+                    // change to seek to closest keyframe 
+                    seek_context.seek_frame = (uint64_t)slider_frame_number;
                     seek_context.use_seek = true;
 
                     // synchronize seeking
@@ -342,53 +416,13 @@ int main(int, char**)
 
                     to_display_frame_number = seek_context.seek_frame;
                     read_head = 0;
-                    just_seeked = true;
-                }
-            }
-            else {
-                if (ImGui::Button(play_video ? ICON_FK_PAUSE : ICON_FK_PLAY))
-                {
-                    play_video = !play_video;
-                }
-            }
-
-
-            ImGui::SameLine();
-            // Arrow buttons with Repeater
-            float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
-            ImGui::PushButtonRepeat(true);
-            ImGui::SameLine(0.0f, spacing);
-            if (ImGui::Button(ICON_FK_PLUS)) {
-                // advance_clicks++;
-                play_video = true;
-                toggle_play_status = true;
-            }
-            ImGui::PopButtonRepeat();
-            ImGui::SameLine();
-
-            slider_just_changed = ImGui::SliderInt("##frame count", &slider_frame_number, 0, *estimated_num_frames);
-            
-            if (slider_just_changed){
-                std::cout << "main, seeking: " << slider_frame_number << std::endl;
-
-                // change to seek to closest keyframe 
-                seek_context.seek_frame = (uint64_t)slider_frame_number;
-                seek_context.use_seek = true;
-
-                // synchronize seeking
-                while (seek_context.use_seek) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    just_seeked = true;                 
                 }
 
-                to_display_frame_number = seek_context.seek_frame;
-                read_head = 0;
-                just_seeked = true;                 
+                ImGui::EndGroup();
+                ImGui::End();
             }
-
-            ImGui::EndGroup();
-            ImGui::End();
         }
-        
 
         // Rendering
         ImGui::Render();
@@ -416,7 +450,11 @@ int main(int, char**)
         
         if(*decoding_flag && play_video && (!just_seeked) && (to_display_frame_number < (*total_num_frame-1))){
             to_display_frame_number++;
-            display_buffer[read_head].available_to_write = true;
+
+            for(int j=0; j<num_cams; j++){
+                display_buffer[j][read_head].available_to_write = true;
+            }
+
             read_head = (read_head + 1) % size_of_buffer;
             slider_frame_number = to_display_frame_number;
         }
