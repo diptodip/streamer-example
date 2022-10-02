@@ -14,4 +14,12 @@ struct PictureBuffer{
 	bool available_to_write;
 };
 
-void decoder_process(const char* input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context, int* total_num_frame, int* estimated_num_frames);
+
+struct SeekInfo{
+    bool use_seek;
+    bool seek_done;
+    uint64_t seek_frame;
+};
+
+
+void decoder_process(const char* input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekInfo* seek_context, int* total_num_frame, int* estimated_num_frames);

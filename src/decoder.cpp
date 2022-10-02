@@ -1,6 +1,6 @@
 #include "decoder.h"
 
-void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekContext* seek_context, int* total_num_frame, int* estimated_num_frames)
+void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* display_buffer, bool* decoding_flag, int size_of_buffer, bool* stop_flag, SeekInfo* seek_info, int* total_num_frame, int* estimated_num_frames)
 {
 
     CheckInputFile(input_file_name);
@@ -39,14 +39,17 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
     do{
 
         // todo: need to make seek_context thread safe
-        if (seek_context->use_seek) {
+        if (seek_info->use_seek) {
 
             //demuxer.Flush();
-            std::cout << "target_frame_number:" << seek_context->seek_frame << std::endl;
+            std::cout << "target_frame_number:" << seek_info->seek_frame << std::endl;
+            
             // assume every 10s is a keyframe, double check if your video is like that 
-            seek_context->seek_frame = demuxer.FindClosestKeyFrame(seek_context->seek_frame, 10);
+            seek_info->seek_frame = demuxer.FindClosestKeyFrame(seek_info->seek_frame, 10);
+            std::cout << "seeking to: " << seek_info->seek_frame << std::endl;
+            SeekContext s = SeekContext(seek_info->seek_frame);
 
-            seek_success_flag = demuxer.Seek(*seek_context, pVideo, nVideoBytes, pktinfo);
+            seek_success_flag = demuxer.Seek(s, pVideo, nVideoBytes, pktinfo);
             std::cout << "seek_success_flag: "  << seek_success_flag << std::endl;
 
             // reset the display buffer after seeking  
@@ -67,9 +70,9 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
 
             //dec.setReconfigParams(NULL, NULL);
             buffer_head = 0;
-            nFrame = seek_context->seek_frame;
-
-            seek_context->use_seek = false;
+            nFrame = seek_info->seek_frame;
+            seek_info->use_seek = false;
+            seek_info->seek_done = true;
                
         }
         else {
@@ -109,7 +112,7 @@ void decoder_process(const char *input_file_name, int gpu_id, PictureBuffer* dis
                     display_buffer[buffer_head].frame_number = nFrame;
                 }
                 else {
-                    while (!display_buffer[buffer_head].available_to_write && !(*stop_flag) && !(seek_context->use_seek)) {
+                    while (!display_buffer[buffer_head].available_to_write && !(*stop_flag) && !(seek_info->use_seek)) {
                         // if the next frame hasn't been displayed, the queue is full, sleep  
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     }

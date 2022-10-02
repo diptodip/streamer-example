@@ -179,7 +179,12 @@ int main(int, char**)
 
     static bool show_app_layout = true;
 
-    SeekContext seek_context;
+    SeekInfo seek_context[MAX_VIEWS];
+    for(int j=0; j<MAX_VIEWS; j++){
+        seek_context[j].use_seek=false;
+        seek_context[j].seek_frame=0;
+        seek_context[j].seek_done=false;
+    }
 
     int slider_frame_number = 0;
     bool just_seeked = false;
@@ -255,7 +260,7 @@ int main(int, char**)
                 std::size_t cam_string_position = input_file_names[i].find("Cam");      // position of "Cam" in str
                 std::string cam_string = input_file_names[i].substr(cam_string_position);     // get from "Cam" to the end
                 camera_names.push_back(cam_string);
-                decoder_threads.push_back(std::thread(&decoder_process, input_file_names[i].c_str(), gpu_index, display_buffer[i], decoding_flag, size_of_buffer, stop_flag, &seek_context, total_num_frame, estimated_num_frames));
+                decoder_threads.push_back(std::thread(&decoder_process, input_file_names[i].c_str(), gpu_index, display_buffer[i], decoding_flag, size_of_buffer, stop_flag, &seek_context[i], total_num_frame, estimated_num_frames));
             }
 
             video_loaded = true;
@@ -366,15 +371,24 @@ int main(int, char**)
                 if (to_display_frame_number == (*total_num_frame - 1)) {
                     if (ImGui::Button(ICON_FK_REPEAT)) {
                         // seek to zero
-                        seek_context.seek_frame = 0;
-                        seek_context.use_seek = true;
-
-                        // synchronize seeking
-                        while (seek_context.use_seek) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                        for(int i=0; i<num_cams; i++){
+                            seek_context[i].seek_frame = 0;
+                            seek_context[i].use_seek = true;
                         }
 
-                        to_display_frame_number = seek_context.seek_frame;
+
+                        for(int i=0; i<num_cams; i++){
+                            // synchronize seeking
+                            while (!(seek_context[i].seek_done)) {
+                                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            }
+                        }
+                        
+                        for(int i=0; i<num_cams; i++){
+                            seek_context[i].seek_done = false;
+                        }
+
+                        to_display_frame_number = seek_context[0].seek_frame;
                         read_head = 0;
                         just_seeked = true;
                     }
@@ -404,19 +418,31 @@ int main(int, char**)
                 
                 if (slider_just_changed){
                     std::cout << "main, seeking: " << slider_frame_number << std::endl;
-
-                    // change to seek to closest keyframe 
-                    seek_context.seek_frame = (uint64_t)slider_frame_number;
-                    seek_context.use_seek = true;
-
-                    // synchronize seeking
-                    while (seek_context.use_seek) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    
+                    for(int i=0; i<num_cams; i++){
+                        seek_context[i].seek_frame = (uint64_t)slider_frame_number;
+                        seek_context[i].use_seek = true;
                     }
 
-                    to_display_frame_number = seek_context.seek_frame;
+
+                    for(int i=0; i<num_cams; i++){
+                        // synchronize seeking
+                        while (!(seek_context[i].seek_done)) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            std::cout << "Seeking Cam" << i << std::endl;
+                        }
+                        
+                    }
+                    
+                    for(int i=0; i<num_cams; i++){
+                        seek_context[i].seek_done = false;
+                    }
+
+                    to_display_frame_number = seek_context[0].seek_frame;
                     read_head = 0;
-                    just_seeked = true;                 
+                    just_seeked = true;
+                    
+                          
                 }
 
                 ImGui::EndGroup();
