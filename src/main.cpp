@@ -28,6 +28,7 @@
 #include "gl_helper.h"
 #include "decoder.h"
 #include "IconsForkAwesome.h"
+#include "implot.h"
 
 
 #include <iostream>       // std::cout
@@ -79,6 +80,8 @@ int main(int, char**)
  // ************* Dear Imgui ********************//
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlotContext* implotCtx = ImPlot::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -365,7 +368,14 @@ int main(int, char**)
                 std::string scene_name = "scene view" + std::to_string(j);
                 ImGui::BeginChild(scene_name.c_str(),  ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below
                 ImVec2 avail_size = ImGui::GetContentRegionAvail();
-                ImGui::Image((void*)(intptr_t)image_texture[j], avail_size);
+                
+                //ImGui::Image((void*)(intptr_t)image_texture[j], avail_size);
+                if (ImPlot::BeginPlot("##no_plot_name", avail_size)){
+                    ImPlot::PlotImage("##no_image_name", (void*)(intptr_t)image_texture[j], ImVec2(0,0), ImVec2(3208, 2200));
+                    ImPlot::EndPlot();
+                }
+
+
                 ImGui::EndChild();
 
                 if (to_display_frame_number == (*total_num_frame - 1)) {
